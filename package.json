@@ -1,0 +1,13 @@
+{
+  "name": "uber-clone",
+  "version": "0.1.0",
+  "description": "A full-stack Uber clone application",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
