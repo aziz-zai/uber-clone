@@ -33,3 +33,4 @@ yarn-error.log*
 # OpenClaw
 .openclaw/
 openclaw_cache/
+.vercel

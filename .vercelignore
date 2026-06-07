@@ -1,0 +1,7 @@
+.env
+.env.local
+.git
+node_modules
+AGENTS.md
+SOUL.md
+MEMORY.md
