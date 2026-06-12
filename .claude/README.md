@@ -1,105 +1,39 @@
-# Claude Instructions — AI Dev Team
+# .claude/ — Dev-Team-Setup
 
-This folder contains **Claude instructions** for each role in your dev team. Each agent gets one file as their "job description."
+Hier liegen die Rollen-Briefings und Skills, mit denen wir dieses Projekt wie ein Entwicklerteam bauen.
 
----
+## Rollen-Briefings
 
-## Files
+Fachliche „Job-Beschreibungen", die Haltung & Vorgehen je Domäne festlegen. Ich (Claude) ziehe sie heran, wenn ich in der jeweiligen Rolle arbeite — entweder direkt im Hauptchat oder als Subagent.
 
-| File | Role | Purpose |
-|------|------|---------|
-| `ORCHESTRATION.md` | You (Aziz) | How to command the team from Telegram |
-| `requirements-engineer.md` | Requirements | Grill sessions, PRDs, issue breakdown |
-| `architect.md` | Architecture | Tech stack, system design, ADRs |
-| `backend-dev.md` | Backend | APIs, databases, business logic, TDD |
-| `frontend-dev.md` | Frontend | UI, components, prototypes, UX |
-| `qa-tester.md` | QA | Testing, bug triage, quality gates |
-| `devops.md` | DevOps | Deployments, CI/CD, monitoring |
+| Datei | Rolle |
+|---|---|
+| `requirements-engineer.md` | Anforderungen grillen, PRDs, Issues schneiden |
+| `architect.md` | Techstack, Systemdesign, ADRs |
+| `backend-dev.md` | API, Datenmodell, Business-Logik, TDD |
+| `frontend-dev.md` | UI, Komponenten, Prototypen, UX |
+| `qa-tester.md` | Tests, Bug-Triage, Quality-Gates |
+| `devops.md` | Deployments, CI/CD, Monitoring |
 
----
+## Skills
 
-## How to Use
+`skills/` enthält die installierten [mattpocock/skills](https://github.com/mattpocock/skills) — aufrufbare Slash-Commands wie `/tdd`, `/diagnose`, `/grill-me`, `/to-prd`, `/to-issues`, `/zoom-out`, `/prototype`.
 
-### Single-Agent Mode (Recommended to start)
-Run Claude and load the instructions:
-
-```
-You: "Load .claude/requirements-engineer.md"
-Claude: "Loaded. I'm your Requirements Engineer."
-
-You: "Starte Feature: Ride Booking"
-Claude: [Grills you on requirements]
+Installieren / aktualisieren:
+```bash
+npx skills@latest add mattpocock/skills
 ```
 
-### Multi-Agent Mode (Future)
-When spawning sub-agents:
+## Gemeinsame Sprache
 
-```
-Main Session (You)
-├─ Sub-agent 1: requirements-engineer.md
-├─ Sub-agent 2: architect.md
-├─ Sub-agent 3: backend-dev.md
-├─ Sub-agent 4: frontend-dev.md
-├─ Sub-agent 5: qa-tester.md
-└─ Sub-agent 6: devops.md
-```
+Alle Rollen nutzen [`../CONTEXT.md`](../CONTEXT.md) als verbindliches Domänenmodell. Projektüberblick & Techstack: [`../CLAUDE.md`](../CLAUDE.md).
 
-Each agent specializes in their domain.
+## So arbeiten wir
 
----
+1. **Anforderungen** — Requirements-Engineer grillt den Scope (`/grill-me`), schreibt PRD (`/to-prd`).
+2. **Schneiden** — in vertikale, lauffähige Slices (`/to-issues`).
+3. **Bauen** — Backend/Frontend, testgetrieben (`/tdd`).
+4. **Prüfen** — QA gegen Acceptance-Kriterien.
+5. **Deployen** — Vercel.
 
-## Shared Language
-
-All agents use `CONTEXT.md` to understand:
-- Domain model (Ride, Driver, Rider, Location)
-- Key workflows (ride request → matching → completion)
-- Technical jargon (Materialization, Matching Algorithm, etc.)
-
----
-
-## Architecture Decisions
-
-Major decisions get recorded in `docs/adr/`:
-- Why we chose tech stack
-- How real-time will work
-- Payment integration approach
-- etc.
-
----
-
-## Getting Started
-
-1. **Define Tech Stack** → Ask Architect
-2. **Create Context** → Add to CONTEXT.md
-3. **Start Feature 1** → Requirements Engineer grills you
-4. **Break into slices** → Backend/Frontend/QA execute
-5. **Deploy** → DevOps handles it
-
----
-
-## Tips
-
-- **Be specific in requests** — "Starte Feature: Ride Booking" > "Build the app"
-- **Use domain terms** — Look at CONTEXT.md for the shared language
-- **Document decisions** — ADRs keep everyone aligned
-- **Test-driven** — Backend/Frontend start with failing tests
-- **Vertical slices** — Each slice is shippable, deployable
-
----
-
-## OpenClaw Integration
-
-These instructions work best with OpenClaw because:
-- Spawning sub-agents for each role (parallel development)
-- Telegram orchestration from your phone
-- Git + Vercel auto-deployment
-- claude-max-api-proxy for subscription usage
-
----
-
-## Next Steps
-
-1. Load `architect.md` and decide on tech stack
-2. Update `CONTEXT.md` with domain model
-3. Start first feature with `requirements-engineer.md`
-4. Commit everything to git
+Große Entscheidungen → ADR in `docs/adr/`.

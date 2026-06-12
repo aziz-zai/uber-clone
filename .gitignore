@@ -30,7 +30,7 @@ yarn-error.log*
 # Vercel
 .vercel/
 
-# OpenClaw
-.openclaw/
-openclaw_cache/
-.vercel
+# Skills (mattpocock) — regenerate via `npx skills@latest add mattpocock/skills`.
+# Only skills-lock.json is committed (records the installed set).
+.agents/
+.claude/skills/

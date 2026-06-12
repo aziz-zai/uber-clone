@@ -1,23 +1,28 @@
-# Uber Clone
+# Uber Clone — Personentransport-Plattform
 
-A full-stack Uber clone application.
+Ride-Hailing für Personentransport mit zwei Oberflächen:
 
-## Tech Stack
-- Frontend: (TBD)
-- Backend: (TBD)
-- Deployment: Vercel
+- **Rider-App** — Fahrten bestellen, Fahrer/ETA verfolgen, Verlauf, Bezahlung.
+- **Operator-Portal** — Betreiber verwalten Flotte, Fahrer, Fahrten & Aufträge (analog Uber Fleet/Supplier-Portal).
 
-## Development
+## Techstack
 
-### Local Setup
+Next.js (App Router) · TypeScript · tRPC · Prisma · Postgres + PostGIS (Supabase) · Supabase Realtime & Auth · Mapbox · Tailwind · Deploy auf Vercel.
+
+Details: [CLAUDE.md](./CLAUDE.md) · Domänenmodell: [CONTEXT.md](./CONTEXT.md) · Entscheidungen: `docs/adr/`.
+
+## Setup (lokal)
+
 ```bash
 npm install
-npm run dev
+cp .env.example .env.local   # Werte eintragen
+npm run dev                  # http://localhost:3000
 ```
 
-### Deployment
-Auto-deployed to Vercel on push to main.
+## Deployment
+
+Auto-Deploy auf Vercel bei Push auf `master`.
 
 ---
 
-**Managed by Claude AI** 🤖
+Entwickelt mit Claude Code als Dev-Team (Rollen-Briefings in `.claude/`).

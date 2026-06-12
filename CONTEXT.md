@@ -1,62 +1,69 @@
-# CONTEXT.md - Shared Language for Uber Clone
+# CONTEXT.md — Gemeinsame Sprache (Personentransport-Plattform)
 
-## Domain Model
+Diese Datei definiert das Domänenmodell. Bei neuen Features: **zuerst hier aktualisieren**, dann bauen.
 
-### Core Entities
-- **User** → Person using the app (driver or rider)
-- **Ride** → Single trip from origin to destination
-- **Driver** → User in driver mode, accepts rides
-- **Rider** → User requesting rides
-- **Location** → GPS point with address
-- **Vehicle** → Car assigned to driver
+## Zwei Oberflächen
 
-### Key Workflows
+- **Rider-App** — Endkunde bestellt & erlebt die Fahrt.
+- **Operator-Portal** — Betreiber verwaltet Flotte, Personal, Fahrten, Aufträge.
 
-#### Ride Request Flow
-1. Rider opens app → searches for ride
-2. System matches with nearest driver
-3. Driver accepts → ride status = `ACCEPTED`
-4. Driver arrives at pickup → status = `ARRIVED`
-5. Rider gets in → status = `IN_PROGRESS`
-6. Destination reached → status = `COMPLETED`
-7. Payment processed → status = `PAID`
+## Kern-Entitäten
 
-#### Driver Mode
-- Driver comes online → goes into "available" state
-- Receives ride requests → can accept/decline
-- Navigation to pickup + dropoff
-- Earnings tracking
+| Entität | Beschreibung |
+|---|---|
+| **Operator** | Das Transportunternehmen (Mandant/Tenant). Besitzt Fahrzeuge & beschäftigt Fahrer. |
+| **Vehicle** | Fahrzeug der Flotte: Kennzeichen, Typ/Klasse, Sitzplätze, Status (aktiv/Wartung/inaktiv). |
+| **Driver** | Mitarbeiter im Fahrdienst: Stammdaten, Führerschein/Lizenz, Status (online/offline/busy), aktuelle Vehicle-Zuordnung. |
+| **Rider** | Endkunde, der Fahrten bestellt. |
+| **Ride / Trip** | Eine konkrete Fahrt von Origin zu Destination, mit Status-Statemachine. |
+| **Order / Auftrag** | Buchung einer Fahrt — sofort (on-demand) oder geplant/vorbestellt. Mündet in eine Ride. |
+| **Location** | GPS-Punkt (lat/lng) + Adresse. |
+| **Shift** | Schicht eines Drivers (geplant/aktiv/beendet) — fürs Portal (Personalplanung). |
 
-### Technical Jargon
+> Hinweis: **Rider** und **Driver** sind unterschiedliche Rollen, kein gemeinsamer „User"-Topf. Auth-Rollen: `rider`, `driver`, `operator_admin`.
 
-| Term | Definition |
-|------|-----------|
-| **Materialization** | Converting a data model into actual app state (state machine) |
-| **Matching Algorithm** | Service that finds nearest driver for rider request |
-| **Geofencing** | Location-based trigger for ride zones |
-| **ETA** | Estimated Time of Arrival |
-| **Surge Pricing** | Dynamic pricing based on demand |
+## Ride-Statemachine
 
----
+```
+REQUESTED → ASSIGNED → ACCEPTED → ARRIVED → IN_PROGRESS → COMPLETED → PAID
+                  ↘ CANCELLED (durch Rider/Operator/Driver, mit Grund)
+```
 
-## Architecture Decisions
+- **REQUESTED** — Auftrag angelegt, noch kein Fahrer.
+- **ASSIGNED** — Dispatch/Matching hat einen Driver zugewiesen.
+- **ACCEPTED** — Driver hat angenommen.
+- **ARRIVED** — Driver am Pickup.
+- **IN_PROGRESS** — Rider an Bord, Fahrt läuft.
+- **COMPLETED** — Ziel erreicht.
+- **PAID** — Zahlung verbucht.
 
-See `docs/adr/` for detailed decisions on:
-- Authentication approach
-- Real-time sync strategy
-- Payment integration
-- etc.
+## Schlüssel-Workflows
 
----
+### Auftrag → Fahrt (on-demand)
+1. Rider bestellt (Origin/Destination) → **Order**, Ride = `REQUESTED`.
+2. Matching/Dispatch findet nächsten freien Driver (PostGIS-Umkreissuche) → `ASSIGNED`.
+3. Driver nimmt an → `ACCEPTED`, navigiert zum Pickup → `ARRIVED`.
+4. Rider steigt ein → `IN_PROGRESS`, Ziel erreicht → `COMPLETED`.
+5. Zahlung → `PAID`.
 
-## Tech Stack (TBD)
+### Operator-Portal (Admin)
+- **Flotte:** Vehicles CRUD, Status & Wartung pflegen.
+- **Personal:** Drivers CRUD, Lizenzen, Schichten, Vehicle-Zuordnung.
+- **Dispatch:** offene Aufträge sehen, manuell/automatisch zuweisen.
+- **Tracking:** laufende Fahrten + (später) Live-Position.
+- **Auswertung:** Auslastung, Umsatz, abgeschlossene Fahrten.
 
-Will be defined in first architecture session.
+## Fachbegriffe
 
----
+| Begriff | Bedeutung |
+|---|---|
+| **Dispatch / Matching** | Zuweisung eines freien Drivers zu einem Auftrag (Umkreissuche via PostGIS). |
+| **ETA** | Estimated Time of Arrival. |
+| **Geo-Query** | Räumliche Abfrage (z. B. „Fahrer im 5-km-Umkreis"). |
+| **Tenant / Mandant** | Ein Operator; Daten sind pro Operator getrennt. |
 
-## Communication Rules
+## Kommunikationsregeln
 
-- Use domain terms when possible (not "trip" → "ride")
-- Avoid vague references ("the user" → be specific: "driver" or "rider")
-- When adding new features, update this document first
+- Domain-Begriffe statt Allgemeinplätze: „Rider"/„Driver" statt „User", „Ride" statt „Trip".
+- Neue Features: dieses Dokument zuerst erweitern.
+- Größere Entscheidungen → ADR unter `docs/adr/`.
