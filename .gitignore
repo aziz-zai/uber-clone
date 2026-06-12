@@ -8,11 +8,22 @@ node_modules/
 .env.local
 .env.*.local
 
+# Prisma generated client
+generated/
+
 # Build
 .next/
+out/
 dist/
 build/
 *.tsbuildinfo
+next-env.d.ts
+
+# Testing
+coverage/
+
+# Misc
+*.pem
 
 # IDE
 .vscode/
