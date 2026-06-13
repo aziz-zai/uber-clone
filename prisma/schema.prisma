@@ -14,11 +14,41 @@ datasource db {
     directUrl = env("DIRECT_URL")
 }
 
-model Post {
-    id        Int      @id @default(autoincrement())
+// --- Domänenmodell (siehe CONTEXT.md) ---
+// Jede mandantenbezogene Tabelle trägt operatorId (ADR 0001).
+
+model Operator {
+    id        String   @id @default(cuid())
     name      String
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
 
-    @@index([name])
+    vehicles Vehicle[]
+}
+
+enum VehicleStatus {
+    ACTIVE
+    MAINTENANCE
+    INACTIVE
+}
+
+enum VehicleClass {
+    STANDARD
+    VAN
+    PREMIUM
+}
+
+model Vehicle {
+    id           String        @id @default(cuid())
+    operatorId   String
+    operator     Operator      @relation(fields: [operatorId], references: [id])
+    licensePlate String
+    vehicleClass VehicleClass  @default(STANDARD)
+    seats        Int
+    status       VehicleStatus @default(ACTIVE)
+    createdAt    DateTime      @default(now())
+    updatedAt    DateTime      @updatedAt
+
+    @@unique([operatorId, licensePlate])
+    @@index([operatorId, status])
 }

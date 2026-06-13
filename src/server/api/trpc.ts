@@ -6,11 +6,18 @@
  * TL;DR - This is where all the tRPC server stuff is created and plugged in. The pieces you will
  * need to use are documented accordingly near the end.
  */
-import { initTRPC } from "@trpc/server";
+import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
 import { db } from "~/server/db";
+
+/**
+ * Bis der Auth-Slice (Supabase Auth) kommt, arbeitet die App mit einem fest
+ * verdrahteten Demo-Operator (wird per Seed angelegt). Tests setzen ihre
+ * eigene operatorId im Kontext.
+ */
+export const DEMO_OPERATOR_ID = "demo-operator";
 
 /**
  * 1. CONTEXT
@@ -27,6 +34,8 @@ import { db } from "~/server/db";
 export const createTRPCContext = async (opts: { headers: Headers }) => {
   return {
     db,
+    // TODO(auth-slice): operatorId aus der Supabase-Session lesen
+    operatorId: DEMO_OPERATOR_ID as string | null,
     ...opts,
   };
 };
@@ -104,3 +113,19 @@ const timingMiddleware = t.middleware(async ({ next, path }) => {
  * are logged in.
  */
 export const publicProcedure = t.procedure.use(timingMiddleware);
+
+/**
+ * Operator-Procedure (Mandanten-Kontext, ADR 0001)
+ *
+ * Garantiert eine gesetzte `operatorId` im Kontext. Alle mandantenbezogenen
+ * Procedures (Vehicles, Drivers, …) bauen hierauf auf — die operatorId kommt
+ * IMMER aus dem Kontext (Session), nie aus dem Client-Input.
+ */
+export const operatorProcedure = t.procedure
+  .use(timingMiddleware)
+  .use(({ ctx, next }) => {
+    if (!ctx.operatorId) {
+      throw new TRPCError({ code: "UNAUTHORIZED" });
+    }
+    return next({ ctx: { ...ctx, operatorId: ctx.operatorId } });
+  });
