@@ -10,43 +10,36 @@
 **Always start with tests:**
 
 ```typescript
-// RED: Test fails (doesn't exist yet)
-test("POST /rides creates a ride", async () => {
-  const res = await post("/api/rides", {
-    riderId: "123",
-    origin: { lat: 40, lng: -74 },
-    destination: { lat: 40.5, lng: -73.5 }
+// RED: Test fails (procedure doesn't exist yet)
+test("vehicle.create legt ein Vehicle für den eigenen Operator an", async () => {
+  const caller = createCaller({ operatorId: "op_a", role: "operator_admin" });
+  const vehicle = await caller.vehicle.create({
+    licensePlate: "B-XY 1234",
+    vehicleClass: "STANDARD",
+    seats: 4,
   });
-  expect(res.status).toBe(201);
-  expect(res.body.id).toBeDefined();
-  expect(res.body.status).toBe("REQUESTED");
+  expect(vehicle.id).toBeDefined();
+  expect(vehicle.operatorId).toBe("op_a");
+  expect(vehicle.status).toBe("ACTIVE");
 });
 
-// GREEN: Make test pass (simplest implementation)
-app.post("/api/rides", (req, res) => {
-  const ride = { id: uuid(), status: "REQUESTED", ...req.body };
-  rides.push(ride);
-  res.status(201).json(ride);
-});
-
-// REFACTOR: Make it clean
-// - Move logic to service layer
-// - Add validation
-// - Add error handling
+// GREEN: simplest tRPC procedure that passes (Zod input + Prisma)
+// REFACTOR: Logik in Service ziehen, Fehlerfälle (TRPCError), Edge cases
 ```
+
+**Jeder Slice braucht zusätzlich einen Tenant-Isolations-Test** (ADR 0001):
+Operator A darf Daten von Operator B weder lesen noch ändern.
 
 ### 2. THINK IN SLICES
 Each slice is a vertical feature end-to-end:
 
-**Slice 1: Create Ride**
-- Test: POST /rides creates ride
-- Implementation: API + Postgres table + validation
-- Done: Can create rides via API
+**Slice 1: Vehicles CRUD (Operator-Portal)** ← aktueller Slice, siehe CLAUDE.md
+- Test: `vehicle.create/list/update/setStatus` + Tenant-Isolation
+- Implementation: Prisma-Model + tRPC-Router + Portal-View
+- Done: Operator verwaltet seine Flotte end-to-end, Isolations-Test grün
 
-**Slice 2: Match Driver**
-- Test: System finds nearest available driver
-- Implementation: Matching service + query optimization
-- Done: Rides auto-match to drivers
+**Später z. B.: Drivers CRUD → Orders/Dispatch (PostGIS-Umkreissuche) → Rider-Flow**
+Die verbindliche Slice-Reihenfolge steht in CLAUDE.md, nicht hier.
 
 ### 3. DIAGNOSE BUGS (`/diagnose`)
 When something breaks:
@@ -72,36 +65,39 @@ When something breaks:
 
 ---
 
-## API Design
+## API Design (tRPC, nicht REST)
 
-**Follow REST but think domain:**
+**Ein Router pro Entität, Procedures statt Endpoints:**
 
 ```
-POST /api/rides                    → Create ride request
-GET /api/rides/:id                 → Get ride details
-GET /api/rides/:id/driver          → Who's driving?
-PUT /api/rides/:id/status          → Update ride (accept/complete)
-GET /api/drivers/:id/available-rides → Rides for this driver
+vehicleRouter:  create / list / getById / update / setStatus
+driverRouter:   create / list / update / assignVehicle
+orderRouter:    create / list / assign (Dispatch)
+rideRouter:     getById / updateStatus (Statemachine!)
 ```
 
-**Response format:**
-```json
-{
-  "success": true,
-  "data": { "id": "123", "status": "ACCEPTED" },
-  "errors": null
-}
-```
+**Regeln:**
+- Input-Validierung immer per **Zod-Schema** am Procedure-Input.
+- Tenant-Procedures laufen über eine `operatorProcedure` (Middleware liest
+  `operator_id` aus der Session) — nie `operatorId` vom Client entgegennehmen.
+- Fehler via `TRPCError` (`NOT_FOUND`, `FORBIDDEN`, …) — kein eigenes
+  `{success, data}`-Wrapper-Format; tRPC serialisiert Fehler selbst.
+- Status-Übergänge gegen die Ride-Statemachine aus CONTEXT.md validieren.
 
 ---
 
 ## Database Schema
 
-Start with:
-- `users` (id, role, phone, created_at)
-- `rides` (id, rider_id, driver_id, origin, destination, status, created_at)
-- `locations` (lat, lng, address)
-- Add indexes on: rider_id, driver_id, status, created_at
+Entitäten kommen aus CONTEXT.md — **kein gemeinsamer `users`-Topf**
+(Rider und Driver sind getrennte Modelle, Auth-Rollen via Supabase):
+
+- `Operator` (Mandant) — besitzt Vehicles, beschäftigt Drivers
+- `Vehicle`, `Driver`, `Order`, `Ride`, `Shift` — **jede dieser Tabellen trägt
+  `operator_id`** (Pflicht-FK, ADR 0001) + RLS-Policy
+- `Rider` — plattformweit, ohne `operator_id`
+- Geo-Spalten (Driver-Position, Origin/Destination) als PostGIS `geography`
+- Indexe: zusammengesetzt beginnend mit `operator_id` (z. B. `(operator_id, status)`),
+  GIST-Index auf Geo-Spalten
 
 ---
 

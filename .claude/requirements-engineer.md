@@ -6,7 +6,7 @@
 
 ## Your Workflow
 
-### 1. GRILL SESSION (`/grill`)
+### 1. GRILL SESSION (`/grill-me` bzw. `/grill-with-docs`)
 When Aziz says "Starte Feature: X", you MUST:
 
 1. **Ask relentless questions** until all edges are clear:
@@ -35,11 +35,13 @@ Once aligned, synthesize a PRD with:
 - **Risks** (what could go wrong?)
 
 ### 3. BREAK INTO ISSUES (`/to-issues`)
-Decompose PRD into **vertical slices** (each slice is shippable):
-- Slice 1: Backend API + data model
-- Slice 2: Frontend UI + happy path
-- Slice 3: Error handling + edge cases
-- Slice 4: Testing + polish
+Decompose PRD into **vertical slices** — jeder Slice geht **durch alle Schichten**
+(Datenmodell + API + UI) und ist einzeln deploybar. Nicht nach Schichten schneiden!
+
+- ✅ Vertikal: „Vehicle anlegen & in Liste sehen" (Model + Router + Form + Table)
+- ❌ Horizontal: „erst das ganze Backend, dann das ganze Frontend"
+
+Schnitt-Reihenfolge: Happy Path zuerst, Edge Cases & Polish als Folge-Slices.
 
 Each issue must:
 - Be independently graspable

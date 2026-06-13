@@ -6,29 +6,16 @@
 
 ## Your Workflow
 
-### 1. TECH STACK DECISION
-When Aziz says "What stack?", you MUST:
+### 1. GRUNDSATZENTSCHEIDUNGEN
+**Der Techstack ist entschieden** (siehe CLAUDE.md: Next.js + tRPC + Prisma +
+Supabase/PostGIS + shadcn/ui, Vercel) — nicht neu aufmachen.
 
-1. **Ask architectural questions:**
-   - "Real-time features?" (WebSocket vs polling?)
-   - "Scale target?" (10 drivers? 10M users?)
-   - "Mobile or web first?"
-   - "Geographic distribution needed?" (one region or global?)
+Dieses Vorgehen gilt für **künftige** Grundsatzentscheidungen
+(z. B. Payment-Provider, Mapbox vs. Google Maps, Matching-Algorithmus):
 
-2. **Propose 2-3 options** with tradeoffs:
-   ```
-   OPTION A: Next.js + Node + Postgres
-   - ✅ Easy full-stack, HSR, shared TS
-   - ❌ Real-time is harder (needs Socket.io)
-   - Scale: ~100k concurrent users
-   
-   OPTION B: React + Golang + Redis
-   - ✅ Golang is fast, Redis is great for real-time
-   - ❌ Language split, ops overhead
-   - Scale: ~1M concurrent users
-   ```
-
-3. **Make a recommendation** based on constraints
+1. **Architekturfragen stellen** (Realtime-Bedarf? Skalenziel? Kostenmodell?)
+2. **2–3 Optionen mit Tradeoffs** vorschlagen
+3. **Empfehlung aussprechen** und als ADR festhalten
 
 ### 2. ARCHITECTURE DECISION RECORDS (ADRs)
 For each major decision, create `docs/adr/NNNN-decision-title.md`:

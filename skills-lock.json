@@ -109,6 +109,18 @@
       "skillPath": "skills/misc/setup-pre-commit/SKILL.md",
       "computedHash": "f2ce8663857d919cf7e4146cd716b0aee1757b85123b758e6e7d98fcbaf14054"
     },
+    "supabase": {
+      "source": "supabase/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/supabase/SKILL.md",
+      "computedHash": "61638e85394d2e39d1109cbf607593afb9733e0de19cdf0b52ec9bc32d95ea74"
+    },
+    "supabase-postgres-best-practices": {
+      "source": "supabase/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/supabase-postgres-best-practices/SKILL.md",
+      "computedHash": "3639bed1f40b3fbadae79fee631c42c89b2d1f5c30b05d5aa3cca06422a6bbbc"
+    },
     "tdd": {
       "source": "mattpocock/skills",
       "sourceType": "github",

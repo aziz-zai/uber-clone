@@ -96,27 +96,16 @@ Secrets needed:
 
 ## Database Migrations
 
-**For schema changes:**
+**Schema-Änderungen laufen über Prisma**, nicht über handgeschriebene SQL-Dateien:
 
-```sql
--- migrations/001_create_rides_table.sql
-CREATE TABLE rides (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  rider_id UUID NOT NULL REFERENCES users(id),
-  driver_id UUID REFERENCES users(id),
-  origin_lat DECIMAL(10, 8),
-  origin_lng DECIMAL(11, 8),
-  destination_lat DECIMAL(10, 8),
-  destination_lng DECIMAL(11, 8),
-  status VARCHAR(20) DEFAULT 'REQUESTED',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_rides_rider_id ON rides(rider_id);
-CREATE INDEX idx_rides_driver_id ON rides(driver_id);
-CREATE INDEX idx_rides_status ON rides(status);
+```bash
+npx prisma migrate dev --name add_vehicle   # lokal: Migration erzeugen + anwenden
+npx prisma migrate deploy                   # CI/Prod: ausstehende Migrationen anwenden
 ```
+
+**Ausnahme — Dinge, die Prisma nicht kennt, als SQL in die Migration ergänzen:**
+- RLS-Policies (`CREATE POLICY ... USING (operator_id = ...)`, ADR 0001)
+- PostGIS (`geography`-Spalten, GIST-Indexe)
 
 **Deploy order:**
 1. Add new column (backwards compatible)
@@ -156,19 +145,6 @@ Make sure:
 - .env.local exists with dummy values
 - DB migrations are run
 - Tests pass locally before pushing
-
----
-
-## Secrets Management (for claude-max-api-proxy)
-
-When ready to deploy Vercel with proxy:
-
-```
-OPENAI_BASE_URL=http://localhost:3456/v1
-OPENAI_API_KEY=dummy
-```
-
-Proxy runs on your local machine (not in Vercel).
 
 ---
 

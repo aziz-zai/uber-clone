@@ -22,8 +22,8 @@ Domänenmodell & Workflows: siehe [CONTEXT.md](./CONTEXT.md).
 - **Supabase Realtime** — Live-Fahrer-Position & Ride-Status (füllt Vercels WebSocket-Lücke).
 - **Supabase Auth** — Rollen: `rider` / `driver` / `operator_admin`.
 - **Mapbox** (oder Google Maps) — Karten.
-- **Tailwind CSS** — UI.
-- **Hosting: Vercel** (Auto-Deploy auf `master`).
+- **Tailwind CSS + shadcn/ui** — UI. Komponenten via `npx shadcn@latest add <component>` ins Repo kopieren; DataTable + Form (react-hook-form + Zod) sind der Standard für CRUD-Views.
+- **Hosting: Vercel** — Feature-Branches = Preview-Deploys, `master` = Production. Jeder Slice endet deployed; Dev-/Prod-DB getrennt. Details: ADR 0002.
 
 Architektur-Entscheidungen werden als ADR in `docs/adr/NNNN-titel.md` festgehalten.
 
@@ -48,12 +48,10 @@ Architektur-Entscheidungen werden als ADR in `docs/adr/NNNN-titel.md` festgehalt
 - **Multi-tenant-ready** von Anfang an: `operator_id` überall + Row-Level-Security (Supabase RLS). ADR noch zu schreiben.
 - Erster Slice: **Vehicles CRUD** im Operator-Portal (anlegen, Liste, bearbeiten, Status) — beweist den ganzen Stack end-to-end.
 
-**Erledigt:** Workspace aufgeräumt (Companion-OS-Ballast raus), `CLAUDE.md`/`CONTEXT.md` neu, mattpocock-Skills installiert.
+**Erledigt (2026-06-13):** Workspace aufgeräumt & committet; T3-App gescaffoldet (Next 15, tRPC 11, Prisma 6, Tailwind 4, Postgres — Typecheck & Build grün); ADR `docs/adr/0001-multi-tenancy.md` geschrieben.
 
 **Nächster Schritt (noch offen):**
-1. Aufgeräumtes Fundament **committen** (noch nicht passiert).
-2. `create-t3-app` scaffolden + Supabase/Prisma/PostGIS einrichten.
-3. ADR `docs/adr/0001-multi-tenancy.md` schreiben.
-4. **Slice 1: Vehicles CRUD** testgetrieben bauen (`/tdd`).
+1. Supabase-Projekt anlegen (User), `DATABASE_URL` in `.env`, PostGIS-Extension aktivieren.
+2. **Slice 1: Vehicles CRUD** testgetrieben bauen (`/tdd`) — Done-Kriterium inkl. Tenant-Isolations-Test (siehe ADR 0001).
 
 > Hinweis: **Claude Fable 5** existiert (Anthropics fähigstes Modell, Claude-5-Familie) und ist als Default-Modell in Claude Code gesetzt. Weitere verfügbare Modelle: Opus 4.8 / Sonnet 4.6 / Haiku 4.5.

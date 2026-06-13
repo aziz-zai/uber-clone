@@ -4,6 +4,17 @@
 
 ---
 
+## Zwei Oberflächen — wer ist gerade dran?
+
+- **Operator-Portal (MVP, jetzt):** Desktop-first Admin-UI. CRUD-Views mit
+  **shadcn/ui** (`npx shadcn@latest add <component>`): `DataTable` für Listen,
+  `Form` (react-hook-form + Zod) für Anlegen/Bearbeiten, `Badge` für Status,
+  `Dialog` für Bestätigungen. Kein Map-Fokus, keine Mobile-Optimierung nötig.
+- **Rider-App (später):** Mobile-first, Map als Hero — dafür gelten die
+  UX-Prinzipien weiter unten.
+
+---
+
 ## Your Workflow
 
 ### 1. PROTOTYPE FIRST (`/prototype`)
@@ -113,9 +124,11 @@ test("Rider can request a ride", async () => {
 ## State Management
 
 **Simple approach first:**
-- React Context for global state (user, current ride)
-- Local state for UI (form inputs, dialogs)
-- WebSocket for real-time updates (driver location, ETA)
+- **Server-State: TanStack Query via tRPC** (`api.vehicle.list.useQuery()`) —
+  kein eigener Fetch-Layer, kein Redux
+- Local state für UI (Formulare, Dialoge)
+- Realtime später via **Supabase Realtime** (Driver-Position, Ride-Status) —
+  kein eigenes WebSocket-Setup
 
 Don't add Redux until you prove it's needed.
 
