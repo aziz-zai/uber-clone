@@ -7,8 +7,11 @@ generator client {
 }
 
 datasource db {
-    provider = "postgresql"
-    url      = env("DATABASE_URL")
+    provider  = "postgresql"
+    // App-Queries über den Supabase Transaction Pooler (6543, serverless-tauglich)
+    url       = env("DATABASE_URL")
+    // Migrationen brauchen eine direkte Verbindung (5432)
+    directUrl = env("DIRECT_URL")
 }
 
 model Post {

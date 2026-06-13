@@ -45,3 +45,4 @@ yarn-error.log*
 # Only skills-lock.json is committed (records the installed set).
 .agents/
 .claude/skills/
+.vercel
