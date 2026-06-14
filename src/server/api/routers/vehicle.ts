@@ -33,6 +33,7 @@ export const vehicleRouter = createTRPCRouter({
   list: operatorProcedure.query(({ ctx }) =>
     ctx.db.vehicle.findMany({
       where: { operatorId: ctx.operatorId },
+      include: { driver: { select: { id: true, name: true } } },
       orderBy: { createdAt: "desc" },
     }),
   ),
