@@ -31,6 +31,7 @@ import {
   TableRow,
 } from "~/components/ui/table";
 import { api } from "~/trpc/react";
+import { SearchableSelect } from "~/components/ui/searchable-select";
 
 type LicenseClass = "B" | "BE" | "C" | "CE";
 type DriverStatus = "OFFLINE" | "ONLINE" | "BUSY";
@@ -441,25 +442,23 @@ export function DriverManager() {
           </DialogHeader>
           <div className="grid gap-2">
             <Label>Fahrzeug</Label>
-            <Select
+            <SearchableSelect
               value={selectedVehicleId}
-              onValueChange={(v) => setSelectedVehicleId(v ?? "")}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Kein Fahrzeug zugewiesen" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">— Keine Zuweisung —</SelectItem>
-                {vehicles?.map((v) => (
-                  <SelectItem key={v.id} value={v.id}>
-                    {v.licensePlate}
-                    {v.driver && v.driver.id !== assignDriver?.id
-                      ? ` (${v.driver.name})`
-                      : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              onChange={setSelectedVehicleId}
+              placeholder="Kein Fahrzeug zugewiesen"
+              emptyLabel="— Keine Zuweisung —"
+              searchPlaceholder="Kennzeichen suchen …"
+              options={
+                vehicles?.map((v) => ({
+                  value: v.id,
+                  label: v.licensePlate,
+                  hint:
+                    v.driver && v.driver.id !== assignDriver?.id
+                      ? v.driver.name
+                      : undefined,
+                })) ?? []
+              }
+            />
             {vehicles?.find(
               (v) =>
                 v.id === selectedVehicleId &&
