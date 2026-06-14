@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Car } from "lucide-react";
+import { Car, Users } from "lucide-react";
 
 import { cn } from "~/lib/utils";
 
 const NAV_ITEMS = [
   { href: "/vehicles", label: "Fahrzeuge", icon: Car },
+  { href: "/drivers", label: "Fahrer", icon: Users },
 ] as const;
 
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void } = {}) {
