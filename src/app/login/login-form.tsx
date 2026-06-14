@@ -28,7 +28,7 @@ export function LoginForm() {
       return;
     }
 
-    router.push("/vehicles");
+    router.push("/dashboard");
     router.refresh();
   }
 

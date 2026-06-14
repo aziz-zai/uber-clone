@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
-const PROTECTED = ["/vehicles", "/drivers", "/profile"];
+const PROTECTED = ["/dashboard", "/vehicles", "/drivers", "/profile"];
 const AUTH_ROUTES = ["/login", "/register"];
 
 export async function middleware(request: NextRequest) {
@@ -42,7 +42,7 @@ export async function middleware(request: NextRequest) {
   }
 
   if (user && isAuthRoute) {
-    return NextResponse.redirect(new URL("/vehicles", request.url));
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
   return response;
