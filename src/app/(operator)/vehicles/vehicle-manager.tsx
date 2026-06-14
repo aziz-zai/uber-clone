@@ -178,6 +178,7 @@ export function VehicleManager() {
         </Dialog>
       </div>
 
+      <div className="overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
@@ -255,6 +256,7 @@ export function VehicleManager() {
           ))}
         </TableBody>
       </Table>
+      </div>
 
       <Dialog open={editId !== null} onOpenChange={(open) => !open && setEditId(null)}>
         <DialogContent>

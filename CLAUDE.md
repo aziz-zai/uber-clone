@@ -35,6 +35,13 @@ Architektur-Entscheidungen werden als ADR in `docs/adr/NNNN-titel.md` festgehalt
 - Rollen-Briefings (Architect, Backend, Frontend, QA, …) liegen in `.claude/`.
 - Skills (mattpocock) liegen in `.claude/skills/`.
 
+## UI-Prinzipien
+
+- **Mobile-first & immer responsive** — jede neue UI-Komponente muss auf mobilen Viewports (≥ 320px) funktionieren. Sidebar auf Mobile: Drawer/Overlay statt fest links. Tabellen auf Mobile: horizontal scrollbar oder Card-Layout. Kein hartes `w-56` ohne responsive Fallback.
+- **Dark/Light Mode** — Theme folgt dem OS (`next-themes`, `enableSystem`). Alle Farben über CSS-Variablen (`--background`, `--foreground`, etc.), nie hardcodierte Hex-Werte in Komponenten.
+- **Design-System: shadcn/ui + Tailwind 4** — Komponenten via `npx shadcn@latest add <name>`. Eigene Farben nur über die definierten Token in `globals.css` (Primary = Blue, Secondary = Slate, Accent = Cyan).
+- **Font: Geist** (via `next/font`) mit `-webkit-font-smoothing: antialiased` auf dem Body.
+
 ## Projekt-Infra
 
 - Repo: `github.com/aziz-zai/uber-clone` (Branch `master`)
