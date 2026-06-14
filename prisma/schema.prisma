@@ -24,6 +24,7 @@ model Operator {
     updatedAt DateTime @updatedAt
 
     vehicles Vehicle[]
+    drivers  Driver[]
 }
 
 enum VehicleStatus {
@@ -36,6 +37,34 @@ enum VehicleClass {
     STANDARD
     VAN
     PREMIUM
+}
+
+enum DriverStatus {
+    OFFLINE
+    ONLINE
+    BUSY
+}
+
+enum LicenseClass {
+    B
+    BE
+    C
+    CE
+}
+
+model Driver {
+    id            String       @id @default(cuid())
+    operatorId    String
+    operator      Operator     @relation(fields: [operatorId], references: [id])
+    name          String
+    licenseNumber String
+    licenseClass  LicenseClass
+    status        DriverStatus @default(OFFLINE)
+    createdAt     DateTime     @default(now())
+    updatedAt     DateTime     @updatedAt
+
+    @@unique([operatorId, licenseNumber])
+    @@index([operatorId, status])
 }
 
 model Vehicle {
