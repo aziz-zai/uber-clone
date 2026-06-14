@@ -123,6 +123,7 @@ function VehicleFormFields({
 export function VehicleManager() {
   const utils = api.useUtils();
   const { data: vehicles, isLoading } = api.vehicle.list.useQuery();
+  const { data: drivers } = api.driver.list.useQuery();
 
   const [createOpen, setCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState<FormState>(EMPTY_FORM);
@@ -130,26 +131,75 @@ export function VehicleManager() {
   const [editId, setEditId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<FormState>(EMPTY_FORM);
 
-  const invalidate = () => utils.vehicle.list.invalidate();
+  // Fahrer-Zuweisung vom Fahrzeug aus
+  const [assignVehicle, setAssignVehicle] = useState<{
+    id: string;
+    licensePlate: string;
+    driverId: string | null;
+  } | null>(null);
+  const [selectedDriverId, setSelectedDriverId] = useState<string>("");
+
+  const invalidate = () => {
+    void utils.vehicle.list.invalidate();
+    void utils.driver.list.invalidate();
+  };
 
   const create = api.vehicle.create.useMutation({
-    onSuccess: async () => {
-      await invalidate();
+    onSuccess: () => {
+      invalidate();
       setCreateOpen(false);
       setCreateForm(EMPTY_FORM);
     },
   });
 
   const update = api.vehicle.update.useMutation({
-    onSuccess: async () => {
-      await invalidate();
+    onSuccess: () => {
+      invalidate();
       setEditId(null);
     },
   });
 
-  const setStatus = api.vehicle.setStatus.useMutation({
-    onSuccess: invalidate,
+  const setStatus = api.vehicle.setStatus.useMutation({ onSuccess: invalidate });
+
+  const assign = api.driver.assign.useMutation({
+    onSuccess: () => {
+      invalidate();
+      setAssignVehicle(null);
+    },
   });
+
+  const unassign = api.driver.unassign.useMutation({
+    onSuccess: () => {
+      invalidate();
+      setAssignVehicle(null);
+    },
+  });
+
+  function openDriverDialog(vehicle: {
+    id: string;
+    licensePlate: string;
+    driver: { id: string; name: string } | null;
+  }) {
+    setAssignVehicle({
+      id: vehicle.id,
+      licensePlate: vehicle.licensePlate,
+      driverId: vehicle.driver?.id ?? null,
+    });
+    setSelectedDriverId(vehicle.driver?.id ?? "");
+    assign.reset();
+    unassign.reset();
+  }
+
+  function handleDriverSubmit() {
+    if (!assignVehicle) return;
+    if (selectedDriverId) {
+      assign.mutate({ driverId: selectedDriverId, vehicleId: assignVehicle.id });
+    } else if (assignVehicle.driverId) {
+      unassign.mutate({ driverId: assignVehicle.driverId });
+    } else {
+      setAssignVehicle(null);
+    }
+  }
 
   return (
     <div className="grid gap-4">
@@ -179,94 +229,105 @@ export function VehicleManager() {
       </div>
 
       <div className="overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Kennzeichen</TableHead>
-            <TableHead>Klasse</TableHead>
-            <TableHead>Sitzplätze</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Fahrer</TableHead>
-            <TableHead className="text-right">Aktionen</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {isLoading && (
+        <Table>
+          <TableHeader>
             <TableRow>
-              <TableCell colSpan={6} className="text-muted-foreground">
-                Lädt…
-              </TableCell>
+              <TableHead>Kennzeichen</TableHead>
+              <TableHead>Klasse</TableHead>
+              <TableHead>Sitzplätze</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Fahrer</TableHead>
+              <TableHead className="text-right">Aktionen</TableHead>
             </TableRow>
-          )}
-          {vehicles?.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={6} className="text-muted-foreground">
-                Noch keine Fahrzeuge — lege das erste an.
-              </TableCell>
-            </TableRow>
-          )}
-          {vehicles?.map((vehicle) => (
-            <TableRow key={vehicle.id}>
-              <TableCell className="font-medium">
-                {vehicle.licensePlate}
-              </TableCell>
-              <TableCell>{CLASS_LABELS[vehicle.vehicleClass]}</TableCell>
-              <TableCell>{vehicle.seats}</TableCell>
-              <TableCell>
-                <Badge variant={STATUS_VARIANTS[vehicle.status]}>
-                  {STATUS_LABELS[vehicle.status]}
-                </Badge>
-              </TableCell>
-              <TableCell className="text-sm">
-                {vehicle.driver ? (
-                  vehicle.driver.name
-                ) : (
-                  <span className="text-muted-foreground">—</span>
-                )}
-              </TableCell>
-              <TableCell className="flex items-center justify-end gap-2">
-                <Select
-                  value={vehicle.status}
-                  onValueChange={(value) =>
-                    setStatus.mutate({
-                      id: vehicle.id,
-                      status: value as VehicleStatus,
-                    })
-                  }
-                >
-                  <SelectTrigger size="sm">
-                    <SelectValue>{STATUS_LABELS[vehicle.status]}</SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                      <SelectItem key={value} value={value}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setEditId(vehicle.id);
-                    setEditForm({
-                      licensePlate: vehicle.licensePlate,
-                      vehicleClass: vehicle.vehicleClass,
-                      seats: vehicle.seats,
-                    });
-                  }}
-                >
-                  Bearbeiten
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {isLoading && (
+              <TableRow>
+                <TableCell colSpan={6} className="text-muted-foreground">
+                  Lädt…
+                </TableCell>
+              </TableRow>
+            )}
+            {vehicles?.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={6} className="text-muted-foreground">
+                  Noch keine Fahrzeuge — lege das erste an.
+                </TableCell>
+              </TableRow>
+            )}
+            {vehicles?.map((vehicle) => (
+              <TableRow key={vehicle.id}>
+                <TableCell className="font-medium">
+                  {vehicle.licensePlate}
+                </TableCell>
+                <TableCell>{CLASS_LABELS[vehicle.vehicleClass]}</TableCell>
+                <TableCell>{vehicle.seats}</TableCell>
+                <TableCell>
+                  <Badge variant={STATUS_VARIANTS[vehicle.status]}>
+                    {STATUS_LABELS[vehicle.status]}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-sm">
+                  {vehicle.driver ? (
+                    vehicle.driver.name
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                </TableCell>
+                <TableCell className="flex items-center justify-end gap-2">
+                  <Select
+                    value={vehicle.status}
+                    onValueChange={(value) =>
+                      setStatus.mutate({
+                        id: vehicle.id,
+                        status: value as VehicleStatus,
+                      })
+                    }
+                  >
+                    <SelectTrigger size="sm">
+                      <SelectValue>{STATUS_LABELS[vehicle.status]}</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openDriverDialog(vehicle)}
+                  >
+                    Fahrer
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setEditId(vehicle.id);
+                      setEditForm({
+                        licensePlate: vehicle.licensePlate,
+                        vehicleClass: vehicle.vehicleClass,
+                        seats: vehicle.seats,
+                      });
+                    }}
+                  >
+                    Bearbeiten
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </div>
 
-      <Dialog open={editId !== null} onOpenChange={(open) => !open && setEditId(null)}>
+      {/* Fahrzeug bearbeiten */}
+      <Dialog
+        open={editId !== null}
+        onOpenChange={(open) => !open && setEditId(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Fahrzeug bearbeiten</DialogTitle>
@@ -283,6 +344,68 @@ export function VehicleManager() {
               disabled={update.isPending}
             >
               {update.isPending ? "Speichert…" : "Speichern"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Fahrer zuweisen vom Fahrzeug aus */}
+      <Dialog
+        open={assignVehicle !== null}
+        onOpenChange={(open) => !open && setAssignVehicle(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              Fahrer — {assignVehicle?.licensePlate}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-2">
+            <Label>Fahrer</Label>
+            <Select
+              value={selectedDriverId}
+              onValueChange={(v) => setSelectedDriverId(v ?? "")}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Kein Fahrer zugewiesen" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">— Kein Fahrer —</SelectItem>
+                {drivers?.map((d) => (
+                  <SelectItem key={d.id} value={d.id}>
+                    {d.name}
+                    {d.vehicleId &&
+                    d.vehicleId !== assignVehicle?.id
+                      ? ` (${d.vehicle?.licensePlate ?? "anderes Fahrzeug"})`
+                      : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {drivers?.find(
+              (d) =>
+                d.id === selectedDriverId &&
+                d.vehicleId &&
+                d.vehicleId !== assignVehicle?.id,
+            ) && (
+              <p className="text-xs text-muted-foreground">
+                Bisherige Fahrzeugzuweisung des Fahrers wird aufgehoben.
+              </p>
+            )}
+          </div>
+          {(assign.error ?? unassign.error) && (
+            <p className="text-sm text-destructive">
+              Zuweisung fehlgeschlagen.
+            </p>
+          )}
+          <DialogFooter>
+            <Button
+              onClick={handleDriverSubmit}
+              disabled={assign.isPending || unassign.isPending}
+            >
+              {assign.isPending || unassign.isPending
+                ? "Speichert…"
+                : "Speichern"}
             </Button>
           </DialogFooter>
         </DialogContent>
