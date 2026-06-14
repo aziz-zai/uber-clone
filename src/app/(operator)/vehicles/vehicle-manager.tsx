@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { Search, X } from "lucide-react";
 
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -61,11 +62,7 @@ type FormState = {
   seats: number;
 };
 
-const EMPTY_FORM: FormState = {
-  licensePlate: "",
-  vehicleClass: "STANDARD",
-  seats: 4,
-};
+const EMPTY_FORM: FormState = { licensePlate: "", vehicleClass: "STANDARD", seats: 4 };
 
 function VehicleFormFields({
   form,
@@ -98,9 +95,7 @@ function VehicleFormFields({
           </SelectTrigger>
           <SelectContent>
             {Object.entries(CLASS_LABELS).map(([value, label]) => (
-              <SelectItem key={value} value={value}>
-                {label}
-              </SelectItem>
+              <SelectItem key={value} value={value}>{label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -125,13 +120,43 @@ export function VehicleManager() {
   const { data: vehicles, isLoading } = api.vehicle.list.useQuery();
   const { data: drivers } = api.driver.list.useQuery();
 
+  // --- Filter state ---
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<VehicleStatus | "ALL">("ALL");
+  const [classFilter, setClassFilter] = useState<VehicleClass | "ALL">("ALL");
+  const [driverFilter, setDriverFilter] = useState<"ALL" | "ASSIGNED" | "UNASSIGNED">("ALL");
+
+  const isFiltered =
+    search !== "" ||
+    statusFilter !== "ALL" ||
+    classFilter !== "ALL" ||
+    driverFilter !== "ALL";
+
+  function resetFilters() {
+    setSearch("");
+    setStatusFilter("ALL");
+    setClassFilter("ALL");
+    setDriverFilter("ALL");
+  }
+
+  const filtered = useMemo(() => {
+    if (!vehicles) return [];
+    const q = search.toLowerCase();
+    return vehicles.filter((v) => {
+      if (q && !v.licensePlate.toLowerCase().includes(q)) return false;
+      if (statusFilter !== "ALL" && v.status !== statusFilter) return false;
+      if (classFilter !== "ALL" && v.vehicleClass !== classFilter) return false;
+      if (driverFilter === "ASSIGNED" && !v.driver) return false;
+      if (driverFilter === "UNASSIGNED" && v.driver) return false;
+      return true;
+    });
+  }, [vehicles, search, statusFilter, classFilter, driverFilter]);
+
+  // --- Dialog / mutation state ---
   const [createOpen, setCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState<FormState>(EMPTY_FORM);
-
   const [editId, setEditId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<FormState>(EMPTY_FORM);
-
-  // Fahrer-Zuweisung vom Fahrzeug aus
   const [assignVehicle, setAssignVehicle] = useState<{
     id: string;
     licensePlate: string;
@@ -145,34 +170,17 @@ export function VehicleManager() {
   };
 
   const create = api.vehicle.create.useMutation({
-    onSuccess: () => {
-      invalidate();
-      setCreateOpen(false);
-      setCreateForm(EMPTY_FORM);
-    },
+    onSuccess: () => { invalidate(); setCreateOpen(false); setCreateForm(EMPTY_FORM); },
   });
-
   const update = api.vehicle.update.useMutation({
-    onSuccess: () => {
-      invalidate();
-      setEditId(null);
-    },
+    onSuccess: () => { invalidate(); setEditId(null); },
   });
-
   const setStatus = api.vehicle.setStatus.useMutation({ onSuccess: invalidate });
-
   const assign = api.driver.assign.useMutation({
-    onSuccess: () => {
-      invalidate();
-      setAssignVehicle(null);
-    },
+    onSuccess: () => { invalidate(); setAssignVehicle(null); },
   });
-
   const unassign = api.driver.unassign.useMutation({
-    onSuccess: () => {
-      invalidate();
-      setAssignVehicle(null);
-    },
+    onSuccess: () => { invalidate(); setAssignVehicle(null); },
   });
 
   function openDriverDialog(vehicle: {
@@ -203,31 +211,111 @@ export function VehicleManager() {
 
   return (
     <div className="grid gap-4">
-      <div className="flex justify-end">
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger render={<Button />}>Neues Fahrzeug</DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Fahrzeug anlegen</DialogTitle>
-            </DialogHeader>
-            <VehicleFormFields form={createForm} onChange={setCreateForm} />
-            {create.error && (
-              <p className="text-sm text-destructive">
-                Anlegen fehlgeschlagen — bitte Eingaben prüfen.
-              </p>
-            )}
-            <DialogFooter>
-              <Button
-                onClick={() => create.mutate(createForm)}
-                disabled={create.isPending}
-              >
-                {create.isPending ? "Speichert…" : "Anlegen"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+      {/* Toolbar */}
+      <div className="flex flex-wrap items-center gap-2">
+        {/* Search */}
+        <div className="relative min-w-[160px] flex-1">
+          <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="pl-8"
+            placeholder="Kennzeichen …"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+
+        {/* Status */}
+        <Select
+          value={statusFilter}
+          onValueChange={(v) => setStatusFilter((v ?? "ALL") as typeof statusFilter)}
+        >
+          <SelectTrigger className="w-36">
+            <SelectValue>
+              {statusFilter === "ALL" ? "Alle Status" : STATUS_LABELS[statusFilter]}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Alle Status</SelectItem>
+            {Object.entries(STATUS_LABELS).map(([v, l]) => (
+              <SelectItem key={v} value={v}>{l}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Klasse */}
+        <Select
+          value={classFilter}
+          onValueChange={(v) => setClassFilter((v ?? "ALL") as typeof classFilter)}
+        >
+          <SelectTrigger className="w-36">
+            <SelectValue>
+              {classFilter === "ALL" ? "Alle Klassen" : CLASS_LABELS[classFilter]}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Alle Klassen</SelectItem>
+            {Object.entries(CLASS_LABELS).map(([v, l]) => (
+              <SelectItem key={v} value={v}>{l}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Fahrer */}
+        <Select
+          value={driverFilter}
+          onValueChange={(v) => setDriverFilter((v ?? "ALL") as typeof driverFilter)}
+        >
+          <SelectTrigger className="w-40">
+            <SelectValue>
+              {driverFilter === "ALL"
+                ? "Alle Fahrzeuge"
+                : driverFilter === "ASSIGNED"
+                ? "Mit Fahrer"
+                : "Ohne Fahrer"}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Alle Fahrzeuge</SelectItem>
+            <SelectItem value="ASSIGNED">Mit Fahrer</SelectItem>
+            <SelectItem value="UNASSIGNED">Ohne Fahrer</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {/* Reset */}
+        {isFiltered && (
+          <Button variant="ghost" size="sm" onClick={resetFilters}>
+            <X className="size-3.5" />
+            Zurücksetzen
+          </Button>
+        )}
+
+        <div className="ml-auto flex items-center gap-3">
+          {vehicles && (
+            <span className="text-xs text-muted-foreground">
+              {filtered.length} von {vehicles.length}
+            </span>
+          )}
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            <DialogTrigger render={<Button />}>Neues Fahrzeug</DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Fahrzeug anlegen</DialogTitle></DialogHeader>
+              <VehicleFormFields form={createForm} onChange={setCreateForm} />
+              {create.error && (
+                <p className="text-sm text-destructive">
+                  Anlegen fehlgeschlagen — bitte Eingaben prüfen.
+                </p>
+              )}
+              <DialogFooter>
+                <Button onClick={() => create.mutate(createForm)} disabled={create.isPending}>
+                  {create.isPending ? "Speichert…" : "Anlegen"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
+      {/* Table */}
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
@@ -243,23 +331,21 @@ export function VehicleManager() {
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={6} className="text-muted-foreground">
-                  Lädt…
-                </TableCell>
+                <TableCell colSpan={6} className="text-muted-foreground">Lädt…</TableCell>
               </TableRow>
             )}
-            {vehicles?.length === 0 && (
+            {!isLoading && filtered.length === 0 && (
               <TableRow>
                 <TableCell colSpan={6} className="text-muted-foreground">
-                  Noch keine Fahrzeuge — lege das erste an.
+                  {isFiltered
+                    ? "Keine Fahrzeuge entsprechen den Filtern."
+                    : "Noch keine Fahrzeuge — lege das erste an."}
                 </TableCell>
               </TableRow>
             )}
-            {vehicles?.map((vehicle) => (
+            {filtered.map((vehicle) => (
               <TableRow key={vehicle.id}>
-                <TableCell className="font-medium">
-                  {vehicle.licensePlate}
-                </TableCell>
+                <TableCell className="font-medium">{vehicle.licensePlate}</TableCell>
                 <TableCell>{CLASS_LABELS[vehicle.vehicleClass]}</TableCell>
                 <TableCell>{vehicle.seats}</TableCell>
                 <TableCell>
@@ -278,10 +364,7 @@ export function VehicleManager() {
                   <Select
                     value={vehicle.status}
                     onValueChange={(value) =>
-                      setStatus.mutate({
-                        id: vehicle.id,
-                        status: value as VehicleStatus,
-                      })
+                      setStatus.mutate({ id: vehicle.id, status: value as VehicleStatus })
                     }
                   >
                     <SelectTrigger size="sm">
@@ -289,17 +372,11 @@ export function VehicleManager() {
                     </SelectTrigger>
                     <SelectContent>
                       {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>
-                          {label}
-                        </SelectItem>
+                        <SelectItem key={value} value={value}>{label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => openDriverDialog(vehicle)}
-                  >
+                  <Button variant="outline" size="sm" onClick={() => openDriverDialog(vehicle)}>
                     Fahrer
                   </Button>
                   <Button
@@ -324,14 +401,9 @@ export function VehicleManager() {
       </div>
 
       {/* Fahrzeug bearbeiten */}
-      <Dialog
-        open={editId !== null}
-        onOpenChange={(open) => !open && setEditId(null)}
-      >
+      <Dialog open={editId !== null} onOpenChange={(open) => !open && setEditId(null)}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Fahrzeug bearbeiten</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Fahrzeug bearbeiten</DialogTitle></DialogHeader>
           <VehicleFormFields form={editForm} onChange={setEditForm} />
           {update.error && (
             <p className="text-sm text-destructive">
@@ -349,16 +421,14 @@ export function VehicleManager() {
         </DialogContent>
       </Dialog>
 
-      {/* Fahrer zuweisen vom Fahrzeug aus */}
+      {/* Fahrer zuweisen */}
       <Dialog
         open={assignVehicle !== null}
         onOpenChange={(open) => !open && setAssignVehicle(null)}
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              Fahrer — {assignVehicle?.licensePlate}
-            </DialogTitle>
+            <DialogTitle>Fahrer — {assignVehicle?.licensePlate}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-2">
             <Label>Fahrer</Label>
@@ -374,8 +444,7 @@ export function VehicleManager() {
                 {drivers?.map((d) => (
                   <SelectItem key={d.id} value={d.id}>
                     {d.name}
-                    {d.vehicleId &&
-                    d.vehicleId !== assignVehicle?.id
+                    {d.vehicleId && d.vehicleId !== assignVehicle?.id
                       ? ` (${d.vehicle?.licensePlate ?? "anderes Fahrzeug"})`
                       : ""}
                   </SelectItem>
@@ -394,18 +463,14 @@ export function VehicleManager() {
             )}
           </div>
           {(assign.error ?? unassign.error) && (
-            <p className="text-sm text-destructive">
-              Zuweisung fehlgeschlagen.
-            </p>
+            <p className="text-sm text-destructive">Zuweisung fehlgeschlagen.</p>
           )}
           <DialogFooter>
             <Button
               onClick={handleDriverSubmit}
               disabled={assign.isPending || unassign.isPending}
             >
-              {assign.isPending || unassign.isPending
-                ? "Speichert…"
-                : "Speichern"}
+              {assign.isPending || unassign.isPending ? "Speichert…" : "Speichern"}
             </Button>
           </DialogFooter>
         </DialogContent>

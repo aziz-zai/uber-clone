@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { Search, X } from "lucide-react";
 
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -62,11 +63,7 @@ type FormState = {
   licenseClass: LicenseClass;
 };
 
-const EMPTY_FORM: FormState = {
-  name: "",
-  licenseNumber: "",
-  licenseClass: "B",
-};
+const EMPTY_FORM: FormState = { name: "", licenseNumber: "", licenseClass: "B" };
 
 function DriverFormFields({
   form,
@@ -91,9 +88,7 @@ function DriverFormFields({
         <Input
           id="licenseNumber"
           value={form.licenseNumber}
-          onChange={(e) =>
-            onChange({ ...form, licenseNumber: e.target.value })
-          }
+          onChange={(e) => onChange({ ...form, licenseNumber: e.target.value })}
           placeholder="B123456789"
         />
       </div>
@@ -126,13 +121,51 @@ export function DriverManager() {
   const { data: drivers, isLoading } = api.driver.list.useQuery();
   const { data: vehicles } = api.vehicle.list.useQuery();
 
+  // --- Filter state ---
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<DriverStatus | "ALL">("ALL");
+  const [licenseFilter, setLicenseFilter] = useState<LicenseClass | "ALL">("ALL");
+  const [assignmentFilter, setAssignmentFilter] = useState<
+    "ALL" | "ASSIGNED" | "UNASSIGNED"
+  >("ALL");
+
+  const isFiltered =
+    search !== "" ||
+    statusFilter !== "ALL" ||
+    licenseFilter !== "ALL" ||
+    assignmentFilter !== "ALL";
+
+  function resetFilters() {
+    setSearch("");
+    setStatusFilter("ALL");
+    setLicenseFilter("ALL");
+    setAssignmentFilter("ALL");
+  }
+
+  const filtered = useMemo(() => {
+    if (!drivers) return [];
+    const q = search.toLowerCase();
+    return drivers.filter((d) => {
+      if (
+        q &&
+        !d.name.toLowerCase().includes(q) &&
+        !d.licenseNumber.toLowerCase().includes(q)
+      )
+        return false;
+      if (statusFilter !== "ALL" && d.status !== statusFilter) return false;
+      if (licenseFilter !== "ALL" && d.licenseClass !== licenseFilter)
+        return false;
+      if (assignmentFilter === "ASSIGNED" && !d.vehicleId) return false;
+      if (assignmentFilter === "UNASSIGNED" && d.vehicleId) return false;
+      return true;
+    });
+  }, [drivers, search, statusFilter, licenseFilter, assignmentFilter]);
+
+  // --- Dialog / mutation state ---
   const [createOpen, setCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState<FormState>(EMPTY_FORM);
-
   const [editId, setEditId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<FormState>(EMPTY_FORM);
-
-  // Assign dialog state
   const [assignDriver, setAssignDriver] = useState<{
     id: string;
     name: string;
@@ -152,28 +185,15 @@ export function DriverManager() {
       setCreateForm(EMPTY_FORM);
     },
   });
-
   const update = api.driver.update.useMutation({
-    onSuccess: () => {
-      invalidate();
-      setEditId(null);
-    },
+    onSuccess: () => { invalidate(); setEditId(null); },
   });
-
   const setStatus = api.driver.setStatus.useMutation({ onSuccess: invalidate });
-
   const assign = api.driver.assign.useMutation({
-    onSuccess: () => {
-      invalidate();
-      setAssignDriver(null);
-    },
+    onSuccess: () => { invalidate(); setAssignDriver(null); },
   });
-
   const unassign = api.driver.unassign.useMutation({
-    onSuccess: () => {
-      invalidate();
-      setAssignDriver(null);
-    },
+    onSuccess: () => { invalidate(); setAssignDriver(null); },
   });
 
   function openAssignDialog(driver: {
@@ -198,31 +218,113 @@ export function DriverManager() {
 
   return (
     <div className="grid gap-4">
-      <div className="flex justify-end">
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger render={<Button />}>Neuer Fahrer</DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Fahrer anlegen</DialogTitle>
-            </DialogHeader>
-            <DriverFormFields form={createForm} onChange={setCreateForm} />
-            {create.error && (
-              <p className="text-sm text-destructive">
-                Anlegen fehlgeschlagen — bitte Eingaben prüfen.
-              </p>
-            )}
-            <DialogFooter>
-              <Button
-                onClick={() => create.mutate(createForm)}
-                disabled={create.isPending}
-              >
-                {create.isPending ? "Speichert…" : "Anlegen"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+      {/* Toolbar */}
+      <div className="flex flex-wrap items-center gap-2">
+        {/* Search */}
+        <div className="relative min-w-[180px] flex-1">
+          <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="pl-8"
+            placeholder="Name oder Führerschein-Nr. …"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+
+        {/* Status */}
+        <Select
+          value={statusFilter}
+          onValueChange={(v) => setStatusFilter((v ?? "ALL") as typeof statusFilter)}
+        >
+          <SelectTrigger className="w-36">
+            <SelectValue>
+              {statusFilter === "ALL" ? "Alle Status" : STATUS_LABELS[statusFilter]}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Alle Status</SelectItem>
+            {Object.entries(STATUS_LABELS).map(([v, l]) => (
+              <SelectItem key={v} value={v}>{l}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Führerschein */}
+        <Select
+          value={licenseFilter}
+          onValueChange={(v) => setLicenseFilter((v ?? "ALL") as typeof licenseFilter)}
+        >
+          <SelectTrigger className="w-36">
+            <SelectValue>
+              {licenseFilter === "ALL" ? "Alle Klassen" : licenseFilter}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Alle Klassen</SelectItem>
+            {Object.keys(LICENSE_LABELS).map((v) => (
+              <SelectItem key={v} value={v}>{v}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Zuweisung */}
+        <Select
+          value={assignmentFilter}
+          onValueChange={(v) =>
+            setAssignmentFilter((v ?? "ALL") as typeof assignmentFilter)
+          }
+        >
+          <SelectTrigger className="w-40">
+            <SelectValue>
+              {assignmentFilter === "ALL"
+                ? "Alle Zuweisungen"
+                : assignmentFilter === "ASSIGNED"
+                ? "Mit Fahrzeug"
+                : "Ohne Fahrzeug"}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">Alle Zuweisungen</SelectItem>
+            <SelectItem value="ASSIGNED">Mit Fahrzeug</SelectItem>
+            <SelectItem value="UNASSIGNED">Ohne Fahrzeug</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {/* Reset */}
+        {isFiltered && (
+          <Button variant="ghost" size="sm" onClick={resetFilters}>
+            <X className="size-3.5" />
+            Zurücksetzen
+          </Button>
+        )}
+
+        <div className="ml-auto flex items-center gap-3">
+          {drivers && (
+            <span className="text-xs text-muted-foreground">
+              {filtered.length} von {drivers.length}
+            </span>
+          )}
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            <DialogTrigger render={<Button />}>Neuer Fahrer</DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Fahrer anlegen</DialogTitle></DialogHeader>
+              <DriverFormFields form={createForm} onChange={setCreateForm} />
+              {create.error && (
+                <p className="text-sm text-destructive">
+                  Anlegen fehlgeschlagen — bitte Eingaben prüfen.
+                </p>
+              )}
+              <DialogFooter>
+                <Button onClick={() => create.mutate(createForm)} disabled={create.isPending}>
+                  {create.isPending ? "Speichert…" : "Anlegen"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
+      {/* Table */}
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
@@ -238,24 +340,22 @@ export function DriverManager() {
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={6} className="text-muted-foreground">
-                  Lädt…
-                </TableCell>
+                <TableCell colSpan={6} className="text-muted-foreground">Lädt…</TableCell>
               </TableRow>
             )}
-            {drivers?.length === 0 && (
+            {!isLoading && filtered.length === 0 && (
               <TableRow>
                 <TableCell colSpan={6} className="text-muted-foreground">
-                  Noch keine Fahrer — lege den ersten an.
+                  {isFiltered
+                    ? "Keine Fahrer entsprechen den Filtern."
+                    : "Noch keine Fahrer — lege den ersten an."}
                 </TableCell>
               </TableRow>
             )}
-            {drivers?.map((driver) => (
+            {filtered.map((driver) => (
               <TableRow key={driver.id}>
                 <TableCell className="font-medium">{driver.name}</TableCell>
-                <TableCell className="font-mono text-sm">
-                  {driver.licenseNumber}
-                </TableCell>
+                <TableCell className="font-mono text-sm">{driver.licenseNumber}</TableCell>
                 <TableCell>{driver.licenseClass}</TableCell>
                 <TableCell>
                   <Badge variant={STATUS_VARIANTS[driver.status]}>
@@ -273,10 +373,7 @@ export function DriverManager() {
                   <Select
                     value={driver.status}
                     onValueChange={(value) =>
-                      setStatus.mutate({
-                        id: driver.id,
-                        status: value as DriverStatus,
-                      })
+                      setStatus.mutate({ id: driver.id, status: value as DriverStatus })
                     }
                   >
                     <SelectTrigger size="sm">
@@ -284,17 +381,11 @@ export function DriverManager() {
                     </SelectTrigger>
                     <SelectContent>
                       {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>
-                          {label}
-                        </SelectItem>
+                        <SelectItem key={value} value={value}>{label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => openAssignDialog(driver)}
-                  >
+                  <Button variant="outline" size="sm" onClick={() => openAssignDialog(driver)}>
                     Fahrzeug
                   </Button>
                   <Button
@@ -321,9 +412,7 @@ export function DriverManager() {
       {/* Edit Dialog */}
       <Dialog open={editId !== null} onOpenChange={(open) => !open && setEditId(null)}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Fahrer bearbeiten</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Fahrer bearbeiten</DialogTitle></DialogHeader>
           <DriverFormFields form={editForm} onChange={setEditForm} />
           {update.error && (
             <p className="text-sm text-destructive">
@@ -348,9 +437,7 @@ export function DriverManager() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              Fahrzeug zuweisen — {assignDriver?.name}
-            </DialogTitle>
+            <DialogTitle>Fahrzeug zuweisen — {assignDriver?.name}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-2">
             <Label>Fahrzeug</Label>
@@ -385,18 +472,14 @@ export function DriverManager() {
             )}
           </div>
           {(assign.error ?? unassign.error) && (
-            <p className="text-sm text-destructive">
-              Zuweisung fehlgeschlagen.
-            </p>
+            <p className="text-sm text-destructive">Zuweisung fehlgeschlagen.</p>
           )}
           <DialogFooter>
             <Button
               onClick={handleAssignSubmit}
               disabled={assign.isPending || unassign.isPending}
             >
-              {assign.isPending || unassign.isPending
-                ? "Speichert…"
-                : "Speichern"}
+              {assign.isPending || unassign.isPending ? "Speichert…" : "Speichern"}
             </Button>
           </DialogFooter>
         </DialogContent>
