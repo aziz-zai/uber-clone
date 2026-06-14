@@ -111,6 +111,7 @@ test("driver.assign weist Fahrzeug zu und gibt vehicleId zurück", async () => {
   const updated = await callerA.driver.assign({ driverId: driver.id, vehicleId: vehicle.id });
 
   expect(updated.vehicleId).toBe(vehicle.id);
+  expect(updated.status).toBe("BUSY");
 });
 
 test("driver.assign auf fremdes Fahrzeug schlägt fehl (Tenant-Isolation)", async () => {
@@ -148,7 +149,9 @@ test("driver.assign wechselt Zuweisung atomisch (alte Zuweisung wird aufgehoben)
   const old = drivers.find((d) => d.id === driverOld.id)!;
   const newD = drivers.find((d) => d.id === driverNew.id)!;
   expect(old.vehicleId).toBeNull();
+  expect(old.status).toBe("OFFLINE");
   expect(newD.vehicleId).toBe(vehicle.id);
+  expect(newD.status).toBe("BUSY");
 });
 
 test("driver.unassign hebt Fahrzeug-Zuweisung auf", async () => {
@@ -161,6 +164,7 @@ test("driver.unassign hebt Fahrzeug-Zuweisung auf", async () => {
 
   const unassigned = await callerA.driver.unassign({ driverId: driver.id });
   expect(unassigned.vehicleId).toBeNull();
+  expect(unassigned.status).toBe("OFFLINE");
 });
 
 test("driver.create lehnt ungültige Eingaben ab", async () => {

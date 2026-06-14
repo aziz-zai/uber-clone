@@ -76,14 +76,14 @@ export const driverRouter = createTRPCRouter({
       if (!vehicle) throw new TRPCError({ code: "NOT_FOUND" });
 
       const [, driver] = await ctx.db.$transaction([
-        // Vorherige Zuweisung für dieses Fahrzeug aufheben (falls vorhanden)
+        // Vorherige Zuweisung aufheben + Fahrer auf OFFLINE setzen
         ctx.db.driver.updateMany({
           where: { vehicleId: input.vehicleId, operatorId: ctx.operatorId },
-          data: { vehicleId: null },
+          data: { vehicleId: null, status: "OFFLINE" },
         }),
         ctx.db.driver.update({
           where: { id: input.driverId, operatorId: ctx.operatorId },
-          data: { vehicleId: input.vehicleId },
+          data: { vehicleId: input.vehicleId, status: "BUSY" },
         }),
       ]);
       return driver;
@@ -95,7 +95,7 @@ export const driverRouter = createTRPCRouter({
       ctx.db.driver
         .update({
           where: { id: input.driverId, operatorId: ctx.operatorId },
-          data: { vehicleId: null },
+          data: { vehicleId: null, status: "OFFLINE" },
         })
         .catch(notFoundOnP2025),
     ),
