@@ -1,6 +1,7 @@
 import { SidebarNav } from "./_components/sidebar-nav";
 import { ThemeToggle } from "./_components/theme-toggle";
 import { MobileSidebar } from "./_components/mobile-sidebar";
+import { LogoutButton } from "./_components/logout-button";
 
 export default function OperatorLayout({
   children,
@@ -25,8 +26,11 @@ export default function OperatorLayout({
         <SidebarNav />
 
         <div className="flex items-center justify-between border-t border-sidebar-border px-4 py-3">
-          <p className="text-xs text-sidebar-foreground/40">Demo-Operator</p>
-          <ThemeToggle />
+          <p className="text-xs text-sidebar-foreground/40">Operator Portal</p>
+          <div className="flex items-center gap-1">
+            <ThemeToggle />
+            <LogoutButton />
+          </div>
         </div>
       </aside>
 

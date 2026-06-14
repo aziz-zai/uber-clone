@@ -10,32 +10,28 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
+import { createClient } from "~/lib/supabase/server";
 import { db } from "~/server/db";
-
-/**
- * Bis der Auth-Slice (Supabase Auth) kommt, arbeitet die App mit einem fest
- * verdrahteten Demo-Operator (wird per Seed angelegt). Tests setzen ihre
- * eigene operatorId im Kontext.
- */
-export const DEMO_OPERATOR_ID = "demo-operator";
 
 /**
  * 1. CONTEXT
  *
- * This section defines the "contexts" that are available in the backend API.
- *
- * These allow you to access things when processing a request, like the database, the session, etc.
- *
- * This helper generates the "internals" for a tRPC context. The API handler and RSC clients each
- * wrap this and provides the required context.
- *
- * @see https://trpc.io/docs/server/context
+ * operatorId kommt aus app_metadata des eingeloggten Supabase-Users.
+ * Tests injizieren ihre eigene operatorId direkt in den Kontext.
  */
 export const createTRPCContext = async (opts: { headers: Headers }) => {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // operatorId MUSS in app_metadata stehen (nie user_metadata — ist user-editierbar)
+  const operatorId =
+    (user?.app_metadata?.operator_id as string | undefined) ?? null;
+
   return {
     db,
-    // TODO(auth-slice): operatorId aus der Supabase-Session lesen
-    operatorId: DEMO_OPERATOR_ID as string | null,
+    operatorId,
     ...opts,
   };
 };
