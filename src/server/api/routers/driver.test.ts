@@ -1,4 +1,5 @@
 import { beforeEach, expect, test } from "vitest";
+import { TRPCError } from "@trpc/server";
 
 import { appRouter } from "~/server/api/root";
 import { createCallerFactory } from "~/server/api/trpc";
@@ -15,7 +16,11 @@ let operatorB: { id: string };
 const TEST_OPERATOR_NAMES = ["Driver-Test A GmbH", "Driver-Test B AG"];
 
 beforeEach(async () => {
+  // Drivers first (FK references vehicles → delete drivers before vehicles)
   await db.driver.deleteMany({
+    where: { operator: { name: { in: TEST_OPERATOR_NAMES } } },
+  });
+  await db.vehicle.deleteMany({
     where: { operator: { name: { in: TEST_OPERATOR_NAMES } } },
   });
   await db.operator.deleteMany({
@@ -94,6 +99,68 @@ test("driver.setStatus schaltet Status OFFLINE → ONLINE → BUSY", async () =>
 
   const offline = await caller.driver.setStatus({ id: driver.id, status: "OFFLINE" });
   expect(offline.status).toBe("OFFLINE");
+});
+
+test("driver.assign weist Fahrzeug zu und gibt vehicleId zurück", async () => {
+  const callerA = callerFor(operatorA.id);
+  const driver = await callerA.driver.create(DRIVER_A);
+  const vehicle = await db.vehicle.create({
+    data: { operatorId: operatorA.id, licensePlate: "B-TS 100", vehicleClass: "STANDARD", seats: 4 },
+  });
+
+  const updated = await callerA.driver.assign({ driverId: driver.id, vehicleId: vehicle.id });
+
+  expect(updated.vehicleId).toBe(vehicle.id);
+});
+
+test("driver.assign auf fremdes Fahrzeug schlägt fehl (Tenant-Isolation)", async () => {
+  const callerA = callerFor(operatorA.id);
+  const callerB = callerFor(operatorB.id);
+  const driver = await callerA.driver.create(DRIVER_A);
+  const vehicleOfB = await db.vehicle.create({
+    data: { operatorId: operatorB.id, licensePlate: "M-FK 200", vehicleClass: "VAN", seats: 6 },
+  });
+
+  await expect(
+    callerA.driver.assign({ driverId: driver.id, vehicleId: vehicleOfB.id }),
+  ).rejects.toMatchObject({ code: "NOT_FOUND" });
+
+  // Fahrzeug von B bleibt unberührt
+  const driversOfB = await callerB.driver.list();
+  expect(driversOfB.every((d) => d.vehicleId === null)).toBe(true);
+});
+
+test("driver.assign wechselt Zuweisung atomisch (alte Zuweisung wird aufgehoben)", async () => {
+  const callerA = callerFor(operatorA.id);
+  const driverOld = await callerA.driver.create(DRIVER_A);
+  const driverNew = await callerA.driver.create(DRIVER_B);
+  const vehicle = await db.vehicle.create({
+    data: { operatorId: operatorA.id, licensePlate: "B-TS 300", vehicleClass: "STANDARD", seats: 4 },
+  });
+
+  // Erstzuweisung
+  await callerA.driver.assign({ driverId: driverOld.id, vehicleId: vehicle.id });
+
+  // Neuzuweisung: driverOld wird automatisch freigegeben
+  await callerA.driver.assign({ driverId: driverNew.id, vehicleId: vehicle.id });
+
+  const drivers = await callerA.driver.list();
+  const old = drivers.find((d) => d.id === driverOld.id)!;
+  const newD = drivers.find((d) => d.id === driverNew.id)!;
+  expect(old.vehicleId).toBeNull();
+  expect(newD.vehicleId).toBe(vehicle.id);
+});
+
+test("driver.unassign hebt Fahrzeug-Zuweisung auf", async () => {
+  const callerA = callerFor(operatorA.id);
+  const driver = await callerA.driver.create(DRIVER_A);
+  const vehicle = await db.vehicle.create({
+    data: { operatorId: operatorA.id, licensePlate: "B-TS 400", vehicleClass: "PREMIUM", seats: 3 },
+  });
+  await callerA.driver.assign({ driverId: driver.id, vehicleId: vehicle.id });
+
+  const unassigned = await callerA.driver.unassign({ driverId: driver.id });
+  expect(unassigned.vehicleId).toBeNull();
 });
 
 test("driver.create lehnt ungültige Eingaben ab", async () => {

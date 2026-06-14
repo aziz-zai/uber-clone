@@ -60,6 +60,8 @@ model Driver {
     licenseNumber String
     licenseClass  LicenseClass
     status        DriverStatus @default(OFFLINE)
+    vehicleId     String?      @unique
+    vehicle       Vehicle?     @relation(fields: [vehicleId], references: [id])
     createdAt     DateTime     @default(now())
     updatedAt     DateTime     @updatedAt
 
@@ -77,6 +79,8 @@ model Vehicle {
     status       VehicleStatus @default(ACTIVE)
     createdAt    DateTime      @default(now())
     updatedAt    DateTime      @updatedAt
+
+    driver       Driver?
 
     @@unique([operatorId, licensePlate])
     @@index([operatorId, status])

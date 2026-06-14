@@ -186,20 +186,21 @@ export function VehicleManager() {
             <TableHead>Klasse</TableHead>
             <TableHead>Sitzplätze</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead>Fahrer</TableHead>
             <TableHead className="text-right">Aktionen</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {isLoading && (
             <TableRow>
-              <TableCell colSpan={5} className="text-muted-foreground">
+              <TableCell colSpan={6} className="text-muted-foreground">
                 Lädt…
               </TableCell>
             </TableRow>
           )}
           {vehicles?.length === 0 && (
             <TableRow>
-              <TableCell colSpan={5} className="text-muted-foreground">
+              <TableCell colSpan={6} className="text-muted-foreground">
                 Noch keine Fahrzeuge — lege das erste an.
               </TableCell>
             </TableRow>
@@ -215,6 +216,13 @@ export function VehicleManager() {
                 <Badge variant={STATUS_VARIANTS[vehicle.status]}>
                   {STATUS_LABELS[vehicle.status]}
                 </Badge>
+              </TableCell>
+              <TableCell className="text-sm">
+                {vehicle.driver ? (
+                  vehicle.driver.name
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                )}
               </TableCell>
               <TableCell className="flex items-center justify-end gap-2">
                 <Select
