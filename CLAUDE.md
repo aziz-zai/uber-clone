@@ -4,18 +4,19 @@
 
 ## Was wir bauen
 
-Eine Personentransport-Plattform (klassisches Ride-Hailing, **kein** Uber Eats) mit **zwei Oberflächen**:
+Eine Personentransport-Plattform (klassisches Ride-Hailing, **kein** Uber Eats) mit **drei Oberflächen**:
 
 1. **Rider-App** — Endkunde bestellt Fahrten, sieht Fahrer/ETA, Verlauf, Bezahlung, Bewertung.
-2. **Operator-Portal** (B2B, Admin) — der Betreiber des Transportunternehmens verwaltet Fahrzeuge, Fahrer/Mitarbeiter, Fahrten und Aufträge; Dispatch, Auslastung, Abrechnung. Analog zu Ubers Fleet-/Supplier-Portal.
+2. **Driver-App** — der Fahrer sieht seine Fahrten-Übersicht, nimmt Buchungen an/ab, steuert seinen Status (online/offline/busy).
+3. **Operator-Portal** (B2B, Admin) — der Betreiber (Unternehmer) verwaltet Fahrzeuge, Fahrer/Mitarbeiter, Fahrten und Aufträge; Dispatch, Auslastung, Abrechnung — inkl. eigener Subunternehmen/Teams. Analog zu Ubers Fleet-/Supplier-Portal.
 
-**MVP-Fokus: Operator-Portal zuerst** (CRUD-lastig, weniger Realtime/Karten-Komplexität am Start), danach Rider-App.
+**MVP-Fokus: Operator-Portal zuerst** (CRUD-lastig, weniger Realtime/Karten-Komplexität am Start), danach Rider-App, danach Driver-App.
 
 Domänenmodell & Workflows: siehe [CONTEXT.md](./CONTEXT.md).
 
 ## Techstack
 
-- **Next.js (App Router) + TypeScript** — eine Codebase für beide Oberflächen (Route-Gruppen `(operator)` / `(rider)`).
+- **Next.js (App Router) + TypeScript** — eine Codebase für alle drei Oberflächen (Route-Gruppen `(operator)` / `(rider)` / `(driver)`).
 - **tRPC** — typsichere API (ideal fürs CRUD-lastige Portal).
 - **Prisma** — ORM + Migrations.
 - **Postgres + PostGIS** via **Supabase** — Geo-Suche („nächsten freien Fahrer finden") nativ.
