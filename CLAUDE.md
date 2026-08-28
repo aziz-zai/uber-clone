@@ -23,6 +23,7 @@ Domänenmodell & Workflows: siehe [CONTEXT.md](./CONTEXT.md).
 - **Supabase Realtime** — Live-Fahrer-Position & Ride-Status (füllt Vercels WebSocket-Lücke).
 - **Supabase Auth** — Rollen: `rider` / `driver` / `operator_admin`.
 - **Mapbox** (oder Google Maps) — Karten.
+- **Stripe** (via Vercel Marketplace) — Zahlungsabwicklung. Hosted Checkout Link (kein eigenes Kartenformular), Details: ADR 0004.
 - **Tailwind CSS + shadcn/ui** — UI. Komponenten via `npx shadcn@latest add <component>` ins Repo kopieren; DataTable + Form (react-hook-form + Zod) sind der Standard für CRUD-Views.
 - **Hosting: Vercel** — Feature-Branches = Preview-Deploys, `master` = Production. Jeder Slice endet deployed; Dev-/Prod-DB getrennt. Details: ADR 0002.
 

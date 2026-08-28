@@ -4,6 +4,7 @@ import type { RideStatus } from "../../../../generated/prisma";
 
 import { createTRPCRouter, operatorProcedure } from "~/server/api/trpc";
 import { assertValidTransition } from "~/server/api/lib/ride-statemachine";
+import { getAppUrl, stripe } from "~/server/api/lib/stripe";
 
 const TIMESTAMP_FIELD: Partial<Record<RideStatus, string>> = {
   ACCEPTED: "acceptedAt",
@@ -86,5 +87,77 @@ export const rideRouter = createTRPCRouter({
 
         return updated;
       });
+    }),
+
+  // Erzeugt einen Stripe-Checkout-Link für eine abgeschlossene Fahrt. Der
+  // Rider zahlt selbst auf der von Stripe gehosteten Seite (kein eigenes
+  // Kartenformular, kein PCI-Scope bei uns) — der Webhook setzt die Ride
+  // anschließend auf PAID (siehe /api/webhooks/stripe, ADR 0004).
+  requestPayment: operatorProcedure
+    .input(z.object({ id: z.string(), amountInCents: z.number().int().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const ride = await ctx.db.ride.findFirst({
+        where: { id: input.id, operatorId: ctx.operatorId },
+        include: { order: { include: { rider: true } } },
+      });
+      if (!ride) throw new TRPCError({ code: "NOT_FOUND" });
+      if (ride.status !== "COMPLETED") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Zahlung kann erst nach Abschluss der Fahrt angefordert werden.",
+        });
+      }
+
+      const rider = ride.order.rider;
+      let stripeCustomerId = rider.stripeCustomerId;
+      if (!stripeCustomerId) {
+        const customer = await stripe.customers.create({
+          name: rider.name,
+          phone: rider.phone,
+        });
+        stripeCustomerId = customer.id;
+        await ctx.db.rider.update({
+          where: { id: rider.id },
+          data: { stripeCustomerId },
+        });
+      }
+
+      const appUrl = getAppUrl();
+      const session = await stripe.checkout.sessions.create({
+        mode: "payment",
+        customer: stripeCustomerId,
+        line_items: [
+          {
+            price_data: {
+              currency: ride.currency,
+              product_data: {
+                name: `Fahrt: ${ride.order.originAddress} → ${ride.order.destinationAddress}`,
+              },
+              unit_amount: input.amountInCents,
+            },
+            quantity: 1,
+          },
+        ],
+        metadata: { rideId: ride.id },
+        success_url: `${appUrl}/dispatch?payment=success`,
+        cancel_url: `${appUrl}/dispatch?payment=cancelled`,
+      });
+
+      await ctx.db.ride.update({
+        where: { id: ride.id },
+        data: {
+          priceInCents: input.amountInCents,
+          stripeCheckoutSessionId: session.id,
+        },
+      });
+
+      if (!session.url) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Stripe hat keine Checkout-URL zurückgegeben.",
+        });
+      }
+
+      return { checkoutUrl: session.url };
     }),
 });

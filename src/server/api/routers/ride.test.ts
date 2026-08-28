@@ -149,3 +149,36 @@ test("ride.updateStatus auf fremde Ride schlägt fehl (Tenant-Isolation)", async
     callerFor(operatorA.id).ride.updateStatus({ id: ride.id, status: "ACCEPTED" }),
   ).rejects.toMatchObject({ code: "NOT_FOUND" });
 });
+
+test("ride.requestPayment lehnt ab, wenn die Fahrt nicht abgeschlossen ist", async () => {
+  const { ride } = await createAssignedRide(operatorA.id, TEST_RIDER_PHONES[0]!);
+
+  await expect(
+    callerFor(operatorA.id).ride.requestPayment({ id: ride.id, amountInCents: 800 }),
+  ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+});
+
+test(
+  "ride.requestPayment erstellt einen Checkout-Link und legt den Stripe-Customer nur einmal an",
+  async () => {
+    const { ride } = await createAssignedRide(operatorA.id, TEST_RIDER_PHONES[0]!);
+    await db.ride.update({ where: { id: ride.id }, data: { status: "COMPLETED" } });
+    const caller = callerFor(operatorA.id);
+
+    const first = await caller.ride.requestPayment({ id: ride.id, amountInCents: 850 });
+    expect(first.checkoutUrl).toMatch(/^https:\/\/checkout\.stripe\.com\//);
+
+    const riderAfterFirst = await db.rider.findUnique({
+      where: { phone: TEST_RIDER_PHONES[0]! },
+    });
+    expect(riderAfterFirst?.stripeCustomerId).toMatch(/^cus_/);
+
+    const second = await caller.ride.requestPayment({ id: ride.id, amountInCents: 900 });
+    const riderAfterSecond = await db.rider.findUnique({
+      where: { phone: TEST_RIDER_PHONES[0]! },
+    });
+    expect(riderAfterSecond?.stripeCustomerId).toBe(riderAfterFirst?.stripeCustomerId);
+    expect(second.checkoutUrl).toMatch(/^https:\/\/checkout\.stripe\.com\//);
+  },
+  15000,
+);

@@ -30,6 +30,7 @@ import {
   TableRow,
 } from "~/components/ui/table";
 import { SearchableSelect } from "~/components/ui/searchable-select";
+import { BASE_FARE_CENTS } from "~/server/api/lib/pricing";
 import { api } from "~/trpc/react";
 
 type VehicleClass = "STANDARD" | "VAN" | "PREMIUM";
@@ -174,6 +175,26 @@ export function DispatchManager() {
       setCancelReason("");
     },
   });
+
+  // --- Zahlung anfordern ---
+  const [paymentRideId, setPaymentRideId] = useState<string | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
+  const requestPayment = api.ride.requestPayment.useMutation({
+    onSuccess: (result) => {
+      invalidate();
+      setCheckoutUrl(result.checkoutUrl);
+    },
+  });
+
+  function openPaymentDialog(rideId: string, vehicleClass: VehicleClass | null) {
+    setPaymentRideId(rideId);
+    setPaymentAmount(
+      ((BASE_FARE_CENTS[vehicleClass ?? "STANDARD"]) / 100).toFixed(2),
+    );
+    setCheckoutUrl(null);
+    requestPayment.reset();
+  }
 
   return (
     <div className="grid gap-4">
@@ -398,6 +419,16 @@ export function DispatchManager() {
                         {STATUS_LABELS[nextStatus]}
                       </Button>
                     )}
+                    {ride.status === "COMPLETED" && (
+                      <Button
+                        size="sm"
+                        onClick={() =>
+                          openPaymentDialog(ride.id, ride.order.vehicleClass)
+                        }
+                      >
+                        Zahlung anfordern
+                      </Button>
+                    )}
                     {ride.status !== "CANCELLED" &&
                       ride.status !== "COMPLETED" &&
                       ride.status !== "PAID" && (
@@ -496,6 +527,72 @@ export function DispatchManager() {
             >
               {cancel.isPending ? "Speichert…" : "Stornieren"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Zahlung anfordern */}
+      <Dialog
+        open={paymentRideId !== null}
+        onOpenChange={(open) => !open && setPaymentRideId(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Zahlung anfordern</DialogTitle>
+          </DialogHeader>
+          {checkoutUrl ? (
+            <div className="grid gap-2">
+              <Label>Checkout-Link</Label>
+              <div className="flex items-center gap-2">
+                <Input readOnly value={checkoutUrl} />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void navigator.clipboard.writeText(checkoutUrl)}
+                >
+                  Kopieren
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Link an den Kunden schicken — nach Zahlung wird die Fahrt
+                automatisch als bezahlt markiert.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-2">
+              <Label htmlFor="paymentAmount">Betrag (EUR)</Label>
+              <Input
+                id="paymentAmount"
+                type="number"
+                step="0.01"
+                min="0.01"
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(e.target.value)}
+              />
+            </div>
+          )}
+          {requestPayment.error && (
+            <p className="text-sm text-destructive">
+              Zahlungsanfrage fehlgeschlagen.
+            </p>
+          )}
+          <DialogFooter>
+            {checkoutUrl ? (
+              <Button onClick={() => setPaymentRideId(null)}>Fertig</Button>
+            ) : (
+              <Button
+                onClick={() =>
+                  paymentRideId &&
+                  requestPayment.mutate({
+                    id: paymentRideId,
+                    amountInCents: Math.round(Number(paymentAmount) * 100),
+                  })
+                }
+                disabled={requestPayment.isPending || !paymentAmount}
+              >
+                {requestPayment.isPending ? "Erstellt…" : "Link erstellen"}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
