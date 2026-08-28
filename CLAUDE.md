@@ -4,18 +4,19 @@
 
 ## Was wir bauen
 
-Eine Personentransport-Plattform (klassisches Ride-Hailing, **kein** Uber Eats) mit **zwei Oberflächen**:
+Eine Personentransport-Plattform (klassisches Ride-Hailing, **kein** Uber Eats) mit **drei Oberflächen**:
 
 1. **Rider-App** — Endkunde bestellt Fahrten, sieht Fahrer/ETA, Verlauf, Bezahlung, Bewertung.
-2. **Operator-Portal** (B2B, Admin) — der Betreiber des Transportunternehmens verwaltet Fahrzeuge, Fahrer/Mitarbeiter, Fahrten und Aufträge; Dispatch, Auslastung, Abrechnung. Analog zu Ubers Fleet-/Supplier-Portal.
+2. **Driver-App** — der Fahrer sieht seine Fahrten-Übersicht, nimmt Buchungen an/ab, steuert seinen Status (online/offline/busy).
+3. **Operator-Portal** (B2B, Admin) — der Betreiber (Unternehmer) verwaltet Fahrzeuge, Fahrer/Mitarbeiter, Fahrten und Aufträge; Dispatch, Auslastung, Abrechnung — inkl. eigener Subunternehmen/Teams. Analog zu Ubers Fleet-/Supplier-Portal.
 
-**MVP-Fokus: Operator-Portal zuerst** (CRUD-lastig, weniger Realtime/Karten-Komplexität am Start), danach Rider-App.
+**MVP-Fokus: Operator-Portal zuerst** (CRUD-lastig, weniger Realtime/Karten-Komplexität am Start), danach Rider-App, danach Driver-App.
 
 Domänenmodell & Workflows: siehe [CONTEXT.md](./CONTEXT.md).
 
 ## Techstack
 
-- **Next.js (App Router) + TypeScript** — eine Codebase für beide Oberflächen (Route-Gruppen `(operator)` / `(rider)`).
+- **Next.js (App Router) + TypeScript** — eine Codebase für alle drei Oberflächen (Route-Gruppen `(operator)` / `(rider)` / `(driver)`).
 - **tRPC** — typsichere API (ideal fürs CRUD-lastige Portal).
 - **Prisma** — ORM + Migrations.
 - **Postgres + PostGIS** via **Supabase** — Geo-Suche („nächsten freien Fahrer finden") nativ.
@@ -52,13 +53,13 @@ Architektur-Entscheidungen werden als ADR in `docs/adr/NNNN-titel.md` festgehalt
 
 **Entschieden:**
 - MVP-Fokus: **Operator-Portal zuerst**, danach Rider-App.
-- **Multi-tenant-ready** von Anfang an: `operator_id` überall + Row-Level-Security (Supabase RLS). ADR noch zu schreiben.
+- **Multi-tenant-ready** von Anfang an: `operator_id` überall + Row-Level-Security (Supabase RLS), siehe `docs/adr/0001-multi-tenancy.md`.
 - Erster Slice: **Vehicles CRUD** im Operator-Portal (anlegen, Liste, bearbeiten, Status) — beweist den ganzen Stack end-to-end.
 
-**Erledigt (2026-06-13):** Workspace aufgeräumt & committet; T3-App gescaffoldet (Next 15, tRPC 11, Prisma 6, Tailwind 4, Postgres — Typecheck & Build grün); ADR `docs/adr/0001-multi-tenancy.md` geschrieben.
+**Erledigt (Stand 2026-08-28):** Slices 1–5 im Operator-Portal: Vehicles CRUD, Drivers CRUD, Supabase Auth (Login/Registrierung/Passwort-vergessen), Vehicle-Driver-Zuweisung mit Filtern, Dashboard (Flottenübersicht/Stats). RLS aktiviert (`ENABLE ROW LEVEL SECURITY` + Policies, siehe Update in ADR 0001 — App-Layer-Filterung bleibt der eigentliche Schutz gegen Prisma). Lokale und Vercel-Preview/Prod-Envs synchron.
 
 **Nächster Schritt (noch offen):**
-1. Supabase-Projekt anlegen (User), `DATABASE_URL` in `.env`, PostGIS-Extension aktivieren.
-2. **Slice 1: Vehicles CRUD** testgetrieben bauen (`/tdd`) — Done-Kriterium inkl. Tenant-Isolations-Test (siehe ADR 0001).
+1. Slice-5-Branch (`slice-5-dashboard-rls`) nach `master` mergen, sobald QA-Check ok.
+2. Nächstes Feature planen — Kandidaten: Dispatch (Order → Ride-Statemachine), Rider-App-Grundgerüst, oder Driver-App-Grundgerüst (drittes Surface, siehe CONTEXT.md).
 
 > Hinweis: **Claude Fable 5** existiert (Anthropics fähigstes Modell, Claude-5-Familie) und ist als Default-Modell in Claude Code gesetzt. Weitere verfügbare Modelle: Opus 4.8 / Sonnet 4.6 / Haiku 4.5.

@@ -1,9 +1,10 @@
 # Uber Clone — Personentransport-Plattform
 
-Ride-Hailing für Personentransport mit zwei Oberflächen:
+Ride-Hailing für Personentransport mit drei Oberflächen:
 
 - **Rider-App** — Fahrten bestellen, Fahrer/ETA verfolgen, Verlauf, Bezahlung.
-- **Operator-Portal** — Betreiber verwalten Flotte, Fahrer, Fahrten & Aufträge (analog Uber Fleet/Supplier-Portal).
+- **Driver-App** — Fahrten-Übersicht, Buchungen annehmen, Status steuern.
+- **Operator-Portal** — Betreiber verwalten Flotte, Fahrer, Fahrten, Aufträge & eigene Subunternehmen/Teams (analog Uber Fleet/Supplier-Portal).
 
 ## Techstack
 

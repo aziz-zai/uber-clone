@@ -45,3 +45,15 @@ Tabelle, jede Query, jede API-Route und jedes Auth-Konzept müsste angefasst wer
 
 Slice 1 (Vehicles CRUD) gilt erst als fertig, wenn ein Test nachweist, dass ein
 `operator_admin` von Operator A keine Vehicles von Operator B lesen oder ändern kann.
+
+## Update (2026-08-28) — RLS aktiviert, mit bekannter Einschränkung
+
+`ENABLE ROW LEVEL SECURITY` + Policies (auf `operator_id`-Match via `auth.jwt()`) sind für
+Operator/Vehicle/Driver live (Migration `20260828155736_enable_rls`). **Bewusst ohne**
+`FORCE ROW LEVEL SECURITY`: `DATABASE_URL` verbindet als `postgres`-Rolle, die als
+Table-Owner RLS standardmäßig umgeht — die Policies greifen aktuell also nicht gegen
+Prisma/tRPC-Queries (die App-Layer-Filterung + ihre Tests bleiben der eigentliche Schutz),
+sondern erst gegen künftige Pfade über den Supabase-Client mit der `authenticated`-Rolle
+(z. B. Realtime). Volle Durchsetzung auch gegen Prisma würde eine eigene unprivilegierte
+DB-Rolle für `DATABASE_URL` plus `FORCE ROW LEVEL SECURITY` erfordern — zurückgestellt,
+bis ein Feature das tatsächlich braucht.
