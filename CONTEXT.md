@@ -18,10 +18,10 @@ Diese Datei definiert das Domänenmodell. Bei neuen Features: **zuerst hier aktu
 | **Team / Sub-Operator** | Optionale Untergliederung eines Operators (z. B. Subunternehmen, Standort, Fuhrpark-Gruppe). Fahrzeuge & Fahrer gehören zum Operator und optional zu einem Team; der Operator-Admin sieht alle Teams, ein Team-Lead nur sein Team. Kein eigenständiger Tenant — RLS bleibt auf `operator_id`-Ebene (ADR 0001), Team ist ein Filter/Scope *innerhalb* eines Tenants. |
 | **Vehicle** | Fahrzeug der Flotte: Kennzeichen, Typ/Klasse, Sitzplätze, Status (aktiv/Wartung/inaktiv), optional einem Team zugeordnet. |
 | **Driver** | Mitarbeiter im Fahrdienst: Stammdaten, Führerschein/Lizenz, Status (online/offline/busy), aktuelle Vehicle-Zuordnung, optional einem Team zugeordnet. Nutzt die Driver-App. |
-| **Rider** | Endkunde, der Fahrten bestellt. Nutzt die Rider-App. |
-| **Ride / Trip** | Eine konkrete Fahrt von Origin zu Destination, mit Status-Statemachine. |
-| **Order / Auftrag** | Buchung einer Fahrt — sofort (on-demand) oder geplant/vorbestellt. Mündet in eine Ride. |
-| **Location** | GPS-Punkt (lat/lng) + Adresse. |
+| **Rider** | Endkunde, der Fahrten bestellt. Nutzt die Rider-App. *(Implementiert Slice 6: eigenes Model, plattformweit, kein `operatorId`.)* |
+| **Ride / Trip** | Eine konkrete Fahrt von Origin zu Destination, mit Status-Statemachine. *(Implementiert Slice 6, siehe ADR 0003.)* |
+| **Order / Auftrag** | Buchung einer Fahrt — aktuell nur sofort (on-demand); Vorbestellung bewusst zurückgestellt (ADR 0003). Mündet 1:1 in eine Ride. *(Implementiert Slice 6.)* |
+| **Location** | GPS-Punkt (lat/lng) + Adresse — aktuell als Felder auf `Order`/`Driver`, keine eigene Tabelle. |
 | **Shift** | Schicht eines Drivers (geplant/aktiv/beendet) — fürs Portal (Personalplanung). |
 
 > Hinweis: **Rider** und **Driver** sind unterschiedliche Rollen, kein gemeinsamer „User"-Topf. Auth-Rollen: `rider`, `driver`, `operator_admin` (perspektivisch `team_lead`). „Team" ist bewusst **keine** zweite Tenant-Ebene — es ändert nichts an ADR 0001, sondern gruppiert Vehicles/Drivers *innerhalb* eines Operators. Eine echte verschachtelte Mandantenschaft (Sub-Tenant mit eigenem Billing/eigener Isolation) ist explizit **nicht** MVP-Scope und müsste, falls später gebraucht, eine eigene ADR bekommen.
@@ -45,10 +45,11 @@ REQUESTED → ASSIGNED → ACCEPTED → ARRIVED → IN_PROGRESS → COMPLETED �
 
 ### Auftrag → Fahrt (on-demand)
 1. Rider bestellt (Origin/Destination) → **Order**, Ride = `REQUESTED`.
-2. Matching/Dispatch findet nächsten freien Driver (PostGIS-Umkreissuche) → `ASSIGNED`.
+2. Matching/Dispatch findet nächsten freien Driver (PostGIS-Umkreissuche, 15-km-Radius, siehe ADR 0003) → `ASSIGNED`.
 3. Driver nimmt an → `ACCEPTED`, navigiert zum Pickup → `ARRIVED`.
 4. Rider steigt ein → `IN_PROGRESS`, Ziel erreicht → `COMPLETED`.
-5. Zahlung → `PAID`.
+5. Zahlung via Stripe-Checkout-Link → `PAID` (siehe ADR 0004).
+6. Solange keine Driver-App existiert, führt der Dispatcher im Operator-Portal die Statusübergänge 2–5 manuell/stellvertretend aus.
 
 ### Operator-Portal (Admin)
 - **Flotte:** Vehicles CRUD, Status & Wartung pflegen.

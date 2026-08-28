@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Car, LayoutDashboard, Users, UserCircle } from "lucide-react";
+import { Car, LayoutDashboard, Route, Users, UserCircle } from "lucide-react";
 
 import { cn } from "~/lib/utils";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dispatch", label: "Dispatch", icon: Route },
   { href: "/vehicles", label: "Fahrzeuge", icon: Car },
   { href: "/drivers", label: "Fahrer", icon: Users },
   { href: "/profile", label: "Profil", icon: UserCircle },

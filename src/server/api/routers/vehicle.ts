@@ -1,19 +1,7 @@
-import { Prisma } from "../../../../generated/prisma";
-import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { createTRPCRouter, operatorProcedure } from "~/server/api/trpc";
-
-/** Prisma P2025 ("record not found") → 404, alles andere weiterwerfen. */
-const notFoundOnP2025 = (error: unknown): never => {
-  if (
-    error instanceof Prisma.PrismaClientKnownRequestError &&
-    error.code === "P2025"
-  ) {
-    throw new TRPCError({ code: "NOT_FOUND" });
-  }
-  throw error;
-};
+import { notFoundOnP2025 } from "~/server/api/lib/errors";
 
 export const vehicleRouter = createTRPCRouter({
   create: operatorProcedure

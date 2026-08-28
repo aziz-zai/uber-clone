@@ -1,18 +1,8 @@
-import { Prisma } from "../../../../generated/prisma";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { createTRPCRouter, operatorProcedure } from "~/server/api/trpc";
-
-const notFoundOnP2025 = (error: unknown): never => {
-  if (
-    error instanceof Prisma.PrismaClientKnownRequestError &&
-    error.code === "P2025"
-  ) {
-    throw new TRPCError({ code: "NOT_FOUND" });
-  }
-  throw error;
-};
+import { notFoundOnP2025 } from "~/server/api/lib/errors";
 
 export const driverRouter = createTRPCRouter({
   create: operatorProcedure
@@ -44,11 +34,23 @@ export const driverRouter = createTRPCRouter({
         name: z.string().trim().min(1).max(100).optional(),
         licenseNumber: z.string().trim().min(1).max(50).optional(),
         licenseClass: z.enum(["B", "BE", "C", "CE"]).optional(),
+        // Aktuelle Position — manueller Platzhalter, bis eine Driver-App
+        // echte GPS-Daten liefert (siehe ADR 0003).
+        currentLat: z.number().min(-90).max(90).optional(),
+        currentLng: z.number().min(-180).max(180).optional(),
       }),
     )
-    .mutation(({ ctx, input: { id, ...data } }) =>
+    .mutation(({ ctx, input: { id, currentLat, currentLng, ...data } }) =>
       ctx.db.driver
-        .update({ where: { id, operatorId: ctx.operatorId }, data })
+        .update({
+          where: { id, operatorId: ctx.operatorId },
+          data: {
+            ...data,
+            ...(currentLat !== undefined || currentLng !== undefined
+              ? { currentLat, currentLng, currentLocationUpdatedAt: new Date() }
+              : {}),
+          },
+        })
         .catch(notFoundOnP2025),
     ),
 

@@ -167,6 +167,8 @@ export function DriverManager() {
   const [createForm, setCreateForm] = useState<FormState>(EMPTY_FORM);
   const [editId, setEditId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<FormState>(EMPTY_FORM);
+  const [editLat, setEditLat] = useState("");
+  const [editLng, setEditLng] = useState("");
   const [assignDriver, setAssignDriver] = useState<{
     id: string;
     name: string;
@@ -399,6 +401,8 @@ export function DriverManager() {
                         licenseNumber: driver.licenseNumber,
                         licenseClass: driver.licenseClass,
                       });
+                      setEditLat(driver.currentLat?.toString() ?? "");
+                      setEditLng(driver.currentLng?.toString() ?? "");
                     }}
                   >
                     Bearbeiten
@@ -415,6 +419,28 @@ export function DriverManager() {
         <DialogContent>
           <DialogHeader><DialogTitle>Fahrer bearbeiten</DialogTitle></DialogHeader>
           <DriverFormFields form={editForm} onChange={setEditForm} />
+          <div className="grid gap-2">
+            <Label>Aktueller Standort</Label>
+            <p className="text-xs text-muted-foreground">
+              Manueller Platzhalter, bis eine Driver-App echte GPS-Daten liefert.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <Input
+                type="number"
+                step="any"
+                placeholder="Breitengrad"
+                value={editLat}
+                onChange={(e) => setEditLat(e.target.value)}
+              />
+              <Input
+                type="number"
+                step="any"
+                placeholder="Längengrad"
+                value={editLng}
+                onChange={(e) => setEditLng(e.target.value)}
+              />
+            </div>
+          </div>
           {update.error && (
             <p className="text-sm text-destructive">
               Speichern fehlgeschlagen — bitte Eingaben prüfen.
@@ -422,7 +448,16 @@ export function DriverManager() {
           )}
           <DialogFooter>
             <Button
-              onClick={() => editId && update.mutate({ id: editId, ...editForm })}
+              onClick={() =>
+                editId &&
+                update.mutate({
+                  id: editId,
+                  ...editForm,
+                  ...(editLat !== "" && editLng !== ""
+                    ? { currentLat: Number(editLat), currentLng: Number(editLng) }
+                    : {}),
+                })
+              }
               disabled={update.isPending}
             >
               {update.isPending ? "Speichert…" : "Speichern"}
